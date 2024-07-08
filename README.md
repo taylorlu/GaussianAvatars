@@ -1,3 +1,4 @@
+(An archive of the official repo)
 # GaussianAvatars: Photorealistic Head Avatars with Rigged 3D Gaussians
 
 ![Method](assets/method.jpg)
