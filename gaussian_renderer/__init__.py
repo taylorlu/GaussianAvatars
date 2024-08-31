@@ -15,8 +15,65 @@ from typing import Union
 from diff_gaussian_rasterization import GaussianRasterizationSettings, GaussianRasterizer
 from scene import GaussianModel, FlameGaussianModel
 from utils.sh_utils import eval_sh
+from io import BytesIO
+import numpy as np
 
-def render(viewpoint_camera, pc : Union[GaussianModel, FlameGaussianModel], pipe, bg_color : torch.Tensor, scaling_modifier = 1.0, override_color = None):
+
+def sh_basis(normal):
+    """
+    Calculate the spherical harmonics basis functions up to 4th order for a given normal vector.
+    Args:
+        normal (numpy.ndarray): The normal vector (should be normalized).
+    
+    Returns:
+        numpy.ndarray: The SH basis values.
+    """
+    x, y, z = normal
+    return np.array([
+        0.28209479177387814,  # l=0, m=0
+        
+        -0.4886025119029199 * y,  # l=1, m=-1
+        0.4886025119029199 * z,   # l=1, m=0
+        -0.4886025119029199 * x,  # l=1, m=1
+
+        1.0925484305920792 * x * y,  # l=2, m=-2
+        -1.0925484305920792 * y * z, # l=2, m=-1
+        0.31539156525252005 * (2 * z ** 2 - x ** 2 - y ** 2),  # l=2, m=0
+        -1.0925484305920792 * x * z, # l=2, m=1
+        0.5462742152960396 * (x ** 2 - y ** 2),  # l=2, m=2
+        
+        -0.5900435899266435 * (3 * x ** 2 - y ** 2) * y,  # l=3, m=-3
+        2.890611442640554 * x * y * z,  # l=3, m=-2
+        -0.4570457994644658 * (4 * z ** 2 - x ** 2 - y ** 2) * y,  # l=3, m=-1
+        0.3731763325901154 * (2 * z ** 2 - 3 * x ** 2 - 3 * y ** 2) * z,  # l=3, m=0
+        -0.4570457994644658 * (4 * z ** 2 - x ** 2 - y ** 2) * x,  # l=3, m=1
+        1.445305721320277 * (x ** 2 - y ** 2) * z,  # l=3, m=2
+        -0.5900435899266435 * (x ** 2 - 3 * y ** 2) * x  # l=3, m=3
+    ])
+
+def calculate_color(sh_coeffs, normal):
+    """
+    Calculate color based on SH coefficients and surface normal.
+    
+    Args:
+        sh_coeffs (numpy.ndarray): Array of SH coefficients with shape (16, 3) (RGB).
+        normal (numpy.ndarray): Normal vector of the surface point.
+
+    Returns:
+        numpy.ndarray: Color (R, G, B) calculated from SH lighting.
+    """
+    # Calculate the SH basis functions for the given normal
+    basis = sh_basis(normal)
+    
+    # Sum the contribution of each SH coefficient
+    color = np.zeros(3) + 0.5
+    for i in range(len(basis)):
+        color += basis[i] * sh_coeffs[i]
+        
+    return np.clip(color, 0, 1)
+
+
+def render(viewpoint_camera, pc : Union[GaussianModel, FlameGaussianModel], pipe, bg_color : torch.Tensor, scaling_modifier = 1.0, override_color = None, index=0):
     """
     Render the scene. 
     
@@ -81,6 +138,51 @@ def render(viewpoint_camera, pc : Union[GaussianModel, FlameGaussianModel], pipe
             shs = pc.get_features
     else:
         colors_precomp = override_color
+
+    means3D_np = means3D.detach().cpu().numpy()
+    scales_np = scales.detach().cpu().numpy()
+    rotations_np = rotations.detach().cpu().numpy()
+    shs_np = shs.detach().cpu().numpy()
+    opacity_np = opacity.detach().cpu().numpy()
+
+    buffer = BytesIO()
+
+    for idx in range(means3D_np.shape[0]):
+        position = np.array([means3D_np[idx][0], means3D_np[idx][1], means3D_np[idx][2]], dtype=np.float32)
+        scales_ = np.array(
+                [scales_np[idx][0], scales_np[idx][1], scales_np[idx][2]],
+                dtype=np.float32,
+            )
+
+        rot_ = np.array(
+            [rotations_np[idx][0], rotations_np[idx][1], rotations_np[idx][2], rotations_np[idx][3]],
+            dtype=np.float32,
+        )
+        dir = position - np.array([0.0, 0.0, 1])
+        dir /= np.linalg.norm(dir)
+        color = np.concatenate([calculate_color(shs_np[idx], dir), opacity_np[idx]])
+
+        # SH_C0 = 0.28209479177387814
+        # color = np.array(
+        #     [
+        #         0.5 + SH_C0 * shs_np[idx][0][0],
+        #         0.5 + SH_C0 * shs_np[idx][0][1],
+        #         0.5 + SH_C0 * shs_np[idx][0][2],
+        #         opacity_np[idx][0],
+        #     ]
+        # )
+        buffer.write(position.tobytes())
+        buffer.write(scales_.tobytes())
+        buffer.write((color * 255).clip(0, 255).astype(np.uint8).tobytes())
+        buffer.write(
+            ((rot_ / np.linalg.norm(rot_)) * 128 + 128)
+            .clip(0, 255)
+            .astype(np.uint8)
+            .tobytes()
+        )
+
+    with open(f'D:/splat/splats/{index}.splat', "wb") as f:
+        f.write(buffer.getvalue())
 
     # Rasterize visible Gaussians to image, obtain their radii (on screen). 
     rendered_image, radii = rasterizer(

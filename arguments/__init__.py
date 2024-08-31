@@ -47,15 +47,15 @@ class ParamGroup:
 class ModelParams(ParamGroup): 
     def __init__(self, parser, sentinel=False):
         self.sh_degree = 3
-        self._source_path = ""  # Path to the source data set
+        self._source_path = r"306\export\306_EMO-1_v16_DS2-0.5x_lmkSTAR_teethV3_SMOOTH_offsetS_whiteBg_maskBelowLine"  # Path to the source data set
         self._target_path = ""  # Path to the target data set for pose and expression transfer
         self._model_path = ""  # Path to the folder to save trained models
         self._images = "images"
         self._resolution = -1
-        self._white_background = False
+        self._white_background = True
         self.data_device = "cuda"
-        self.eval = False
-        self.bind_to_mesh = False
+        self.eval = True
+        self.bind_to_mesh = True
         self.disable_flame_static_offset = False
         self.not_finetune_flame_params = False
         self.select_camera_id = -1

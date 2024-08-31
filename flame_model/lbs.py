@@ -93,8 +93,12 @@ def vertices2landmarks(vertices, faces, lmk_faces_idx, lmk_bary_coords):
     )
 
     lmk_vertices = vertices.view(-1, 3)[lmk_faces].view(batch_size, -1, 3, 3)
+    a, b = lmk_vertices.shape[0], lmk_vertices.shape[1]
+    lmk_vertices = lmk_vertices.reshape([a*b, lmk_vertices.shape[2], -1])
+    lmk_bary_coords = lmk_bary_coords.reshape([a*b, 1, -1])
+    landmarks = torch.matmul(lmk_bary_coords, lmk_vertices).reshape([a, b, lmk_vertices.shape[-1]])
 
-    landmarks = torch.einsum("blfi,blf->bli", [lmk_vertices, lmk_bary_coords])
+    # landmarks = torch.einsum("blfi,blf->bli", [lmk_vertices, lmk_bary_coords])
     return landmarks
 
 
@@ -211,8 +215,9 @@ def vertices2joints(J_regressor, vertices):
     torch.tensor BxJx3
         The location of the joints
     """
+    return torch.matmul(J_regressor.unsqueeze(0), vertices)
 
-    return torch.einsum("bik,ji->bjk", [vertices, J_regressor])
+    # return torch.einsum("bik,ji->bjk", [vertices, J_regressor])
 
 
 def blend_shapes(betas, shape_disps):
@@ -235,8 +240,13 @@ def blend_shapes(betas, shape_disps):
     # Displacement[b, m, k] = sum_{l} betas[b, l] * shape_disps[m, k, l]
     # i.e. Multiply each shape displacement by its corresponding beta and
     # then sum them.
-    blend_shape = torch.einsum("bl,mkl->bmk", [betas, shape_disps])
-    return blend_shape
+    a, b = shape_disps.shape[0], shape_disps.shape[1]
+    shape_disps = shape_disps.unsqueeze(0).reshape([1, a*b, -1])
+    betas = betas.unsqueeze(-1)
+    return torch.matmul(shape_disps, betas).reshape([betas.shape[0], a, b])
+
+    # blend_shape = torch.einsum("bl,mkl->bmk", [betas, shape_disps])
+    # return blend_shape
 
 
 def transform_mat(R, t):
@@ -284,11 +294,15 @@ def batch_rigid_transform(rot_mats, joints, parents, dtype=torch.float32):
     transforms_mat = transforms_mat.view(-1, joints.shape[1], 4, 4)
 
     transform_chain = [transforms_mat[:, 0]]
-    for i in range(1, parents.shape[0]):
-        # Subtract the joint location at the rest pose
-        # No need for rotation, since it's identity when at rest
-        curr_res = torch.matmul(transform_chain[parents[i]], transforms_mat[:, i])
-        transform_chain.append(curr_res)
+
+    curr_res = torch.matmul(transform_chain[0], transforms_mat[:, 1])
+    transform_chain.append(curr_res)
+    curr_res = torch.matmul(transform_chain[1], transforms_mat[:, 2])
+    transform_chain.append(curr_res)
+    curr_res = torch.matmul(transform_chain[1], transforms_mat[:, 3])
+    transform_chain.append(curr_res)
+    curr_res = torch.matmul(transform_chain[1], transforms_mat[:, 4])
+    transform_chain.append(curr_res)
 
     transforms = torch.stack(transform_chain, dim=1)
 
