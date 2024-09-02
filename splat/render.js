@@ -599,7 +599,7 @@ async function main() {
     setInterval(frame, frameInterval);
 
     const rowLength = 3 * 4 + 3 * 4 + 4 + 4;
-    const socketUrl = "ws://192.168.1.3:8000";
+    const socketUrl = "ws://10.10.22.222:8001";
     const ws = new WebSocket(socketUrl);
 
     ws.onmessage = async (event) => {

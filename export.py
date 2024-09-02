@@ -1,3 +1,4 @@
+import pytorch3d.transforms
 from flame_model.flame import FlameHead
 import torch
 import torch.nn as nn
@@ -9,7 +10,7 @@ from scene.gaussian_model import GaussianModel
 from roma import rotmat_to_unitquat, quat_xyzw_to_wxyz, quat_product, quat_wxyz_to_xyzw
 from utils.graphics_utils import compute_face_orientation
 import os
-
+import pytorch3d
 
 class MyGaussianModel(nn.Module):
     def __init__(self) -> None:
@@ -24,13 +25,13 @@ class MyGaussianModel(nn.Module):
         return x / (torch.sqrt(torch.sum(x ** 2, dim=1, keepdim=True)) + 1e-12)
 
     def forward(self, x):
-        shape = x[:, :300]
-        expr = x[:, 300:400]
-        rotation = x[:, 400:403]
-        neck = x[:, 403:406]
-        jaw = x[:, 406:409]
-        eyes = x[:, 409:415]
-        translation = x[:, 415:418]
+        shape = x[None, :300]
+        expr = x[None, 300:400]
+        rotation = x[None, 400:403]
+        neck = x[None, 403:406]
+        jaw = x[None, 406:409]
+        eyes = x[None, 409:415]
+        translation = x[None, 415:418]
         verts = self.flame_model(shape, expr, rotation, neck, jaw, eyes, translation, return_landmarks=False)
 
         faces = self.flame_model.faces
@@ -44,7 +45,9 @@ class MyGaussianModel(nn.Module):
         self.gaussians.face_orien_mat, self.gaussians.face_scaling = compute_face_orientation(verts[0], faces, return_scale=True)
         self.gaussians.face_orien_mat = self.gaussians.face_orien_mat.to(self.gaussians._xyz.device)
         self.gaussians.face_scaling = self.gaussians.face_scaling.to(self.gaussians._xyz.device)
-        self.gaussians.face_orien_quat = quat_xyzw_to_wxyz(rotmat_to_unitquat(self.gaussians.face_orien_mat))  # roma
+        # print(pytorch3d.transforms.matrix_to_quaternion(self.gaussians.face_orien_mat).shape)
+        # print(rotmat_to_unitquat(self.gaussians.face_orien_mat).shape)
+        self.gaussians.face_orien_quat = quat_xyzw_to_wxyz(pytorch3d.transforms.matrix_to_quaternion(self.gaussians.face_orien_mat))  # roma
 
         self.gaussians._xyz.requires_grad_(False)
         xyz = torch.bmm(self.gaussians.face_orien_mat[self.gaussians.binding], self.gaussians._xyz[..., None])
@@ -71,15 +74,17 @@ class MyGaussianModel(nn.Module):
         features_dc = self.gaussians._features_dc
         features_rest = self.gaussians._features_rest
         shs = torch.cat((features_dc, features_rest), dim=1)
+        print(xyz.shape, opacity.shape, scales.shape, rotations.shape, shs.shape)
 
         return xyz, opacity, scales, rotations, shs
 
 
-torch_input = torch.randn([1, 418])
-gaussian_model = MyGaussianModel()
+torch_input = torch.randn([418])
+gaussian_model = MyGaussianModel().eval()
 
-# xyz, opacity, scales, rotations, shs = gaussian_model(torch_input)
-# print(xyz.shape, opacity.shape, scales.shape, rotations.shape, shs.shape)
+for _ in range(10):
+    xyz, opacity, scales, rotations, shs = gaussian_model(torch_input)
+exit(0)
 output_dir = 'exp'
 if(not os.path.exists(output_dir)):
     os.makedirs(output_dir)
@@ -98,10 +103,10 @@ if(not os.path.exists(output_dir)):
 # import onnx
 # onnx_model = onnx.load("myflame.onnx")
 # onnx.checker.check_model(onnx_model)
-
+#, output_names={0: 'xyz', 1: 'opacity', 2: 'scales', 3: 'rotations', 4: 'shs'}
 from nobuco import pytorch_to_keras, ChannelOrder
 # from pytorch2keras import pytorch_to_keras
-keras_model = pytorch_to_keras(gaussian_model, [torch_input], input_names={torch_input: "coeff"}, output_names={0: 'xyz', 1: 'opacity', 2: 'scales', 3: 'rotations', 4: 'shs'})
+keras_model = pytorch_to_keras(gaussian_model, [torch_input], output_names={0: 'xyz', 1: 'opacity', 2: 'scales', 3: 'rotations', 4: 'shs'})
 # keras_model = pytorch_to_keras(
 #     gaussian_model, 
 #     args=[torch_input],
