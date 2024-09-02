@@ -47,7 +47,7 @@ class ParamGroup:
 class ModelParams(ParamGroup): 
     def __init__(self, parser, sentinel=False):
         self.sh_degree = 3
-        self._source_path = r"306\export\306_EMO-1_v16_DS2-0.5x_lmkSTAR_teethV3_SMOOTH_offsetS_whiteBg_maskBelowLine"  # Path to the source data set
+        self._source_path = "306"  # Path to the source data set
         self._target_path = ""  # Path to the target data set for pose and expression transfer
         self._model_path = ""  # Path to the folder to save trained models
         self._images = "images"

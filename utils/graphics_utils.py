@@ -113,20 +113,31 @@ def compute_face_normals(verts, faces):
     face_normals = torch.cross(v1 - v0, v2 - v0, dim=-1)
     return face_normals
 
+def custom_cross(a, b):
+    c = torch.empty_like(a)
+    c[..., 0] = a[..., 1] * b[..., 2] - a[..., 2] * b[..., 1]
+    c[..., 1] = a[..., 2] * b[..., 0] - a[..., 0] * b[..., 2]
+    c[..., 2] = a[..., 0] * b[..., 1] - a[..., 1] * b[..., 0]
+    return c
+
 def compute_face_orientation(verts, faces, return_scale=False):
     i0 = faces[..., 0].long()
     i1 = faces[..., 1].long()
     i2 = faces[..., 2].long()
 
-    v0 = verts[..., i0, :]
-    v1 = verts[..., i1, :]
-    v2 = verts[..., i2, :]
+    # v0 = verts[..., i0, :]
+    # v1 = verts[..., i1, :]
+    # v2 = verts[..., i2, :]
+    v0 = torch.gather(verts, -2, i0.unsqueeze(-1).expand(-1, verts.shape[-1]))
+    v1 = torch.gather(verts, -2, i1.unsqueeze(-1).expand(-1, verts.shape[-1]))
+    v2 = torch.gather(verts, -2, i2.unsqueeze(-1).expand(-1, verts.shape[-1]))
 
     a0 = safe_normalize(v1 - v0)
-    a1 = safe_normalize(torch.cross(a0, v2 - v0, dim=-1))
-    a2 = -safe_normalize(torch.cross(a1, a0, dim=-1))  # will have artifacts without negation
+    a1 = safe_normalize(custom_cross(a0, v2 - v0))
+    a2 = -safe_normalize(custom_cross(a1, a0))  # will have artifacts without negation
 
-    orientation = torch.cat([a0[..., None], a1[..., None], a2[..., None]], dim=-1)
+    # orientation = torch.cat([a0[..., None], a1[..., None], a2[..., None]], dim=-1)
+    orientation = torch.cat([a0.unsqueeze(-1), a1.unsqueeze(-1), a2.unsqueeze(-1)], dim=-1)
 
     if return_scale:
         s0 = length(v1 - v0)
