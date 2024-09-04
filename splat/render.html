@@ -25,94 +25,6 @@
 			a, body {
 				color: white;
 			}
-			#info {
-				z-index: 100;
-				position: absolute;
-				top: 10px;
-				left: 15px;
-			}
-			h3 {
-				margin: 5px 0;
-			}
-			p {
-				margin: 5px 0;
-				font-size: small;
-			}
-
-			.cube-wrapper {
-				transform-style: preserve-3d;
-			}
-
-			.cube {
-				transform-style: preserve-3d;
-				transform: rotateX(45deg) rotateZ(45deg);
-				animation: rotation 2s infinite;
-			}
-
-			.cube-faces {
-				transform-style: preserve-3d;
-				height: 80px;
-				width: 80px;
-				position: relative;
-				transform-origin: 0 0;
-				transform: translateX(0) translateY(0) translateZ(-40px);
-			}
-
-			.cube-face {
-				position: absolute;
-				inset: 0;
-				background: #0017ff;
-				border: solid 1px #ffffff;
-			}
-			.cube-face.top {
-				transform: translateZ(80px);
-			}
-			.cube-face.front {
-				transform-origin: 0 50%;
-				transform: rotateY(-90deg);
-			}
-			.cube-face.back {
-				transform-origin: 0 50%;
-				transform: rotateY(-90deg) translateZ(-80px);
-			}
-			.cube-face.right {
-				transform-origin: 50% 0;
-				transform: rotateX(-90deg) translateY(-80px);
-			}
-			.cube-face.left {
-				transform-origin: 50% 0;
-				transform: rotateX(-90deg) translateY(-80px) translateZ(80px);
-			}
-
-			@keyframes rotation {
-				0% {
-					transform: rotateX(45deg) rotateY(0) rotateZ(45deg);
-					animation-timing-function: cubic-bezier(
-						0.17,
-						0.84,
-						0.44,
-						1
-					);
-				}
-				50% {
-					transform: rotateX(45deg) rotateY(0) rotateZ(225deg);
-					animation-timing-function: cubic-bezier(
-						0.76,
-						0.05,
-						0.86,
-						0.06
-					);
-				}
-				100% {
-					transform: rotateX(45deg) rotateY(0) rotateZ(405deg);
-					animation-timing-function: cubic-bezier(
-						0.17,
-						0.84,
-						0.44,
-						1
-					);
-				}
-			}
 
 			.scene,
 			#message {
@@ -152,34 +64,15 @@
 				touch-action: none;
 			}
 
-			body.nohf .nohf {
-				display: none;
-			}
-			body.nohf #progress, body.nohf .cube-face {
-				background: #ff9d0d;
-			}
 		</style>
 	</head>
 	<body>
 		<script>
 			if(location.host.includes('hf.space')) document.body.classList.add('nohf');
 		</script>
+		<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest"> </script>
 
 		<div id="message"></div>
-		<div class="scene" id="spinner">
-			<div class="cube-wrapper">
-				<div class="cube">
-					<div class="cube-faces">
-						<div class="cube-face bottom"></div>
-						<div class="cube-face top"></div>
-						<div class="cube-face left"></div>
-						<div class="cube-face right"></div>
-						<div class="cube-face back"></div>
-						<div class="cube-face front"></div>
-					</div>
-				</div>
-			</div>
-		</div>
 		<canvas id="canvas"></canvas>
 
 		<div id="quality">
