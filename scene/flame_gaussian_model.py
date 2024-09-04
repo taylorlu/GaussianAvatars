@@ -100,7 +100,7 @@ class FlameGaussianModel(GaussianModel):
             static_offset = self.flame_param['static_offset']
 
         verts, verts_cano = self.flame_model(
-            shape[None, ...],
+            shape[None, ...].cuda(),
             flame_param['expr'].cuda(),
             flame_param['rotation'].cuda(),
             flame_param['neck'].cuda(),

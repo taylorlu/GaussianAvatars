@@ -125,12 +125,9 @@ def compute_face_orientation(verts, faces, return_scale=False):
     i1 = faces[..., 1].long()
     i2 = faces[..., 2].long()
 
-    # v0 = verts[..., i0, :]
-    # v1 = verts[..., i1, :]
-    # v2 = verts[..., i2, :]
-    v0 = torch.gather(verts, -2, i0.unsqueeze(-1).expand(-1, verts.shape[-1]))
-    v1 = torch.gather(verts, -2, i1.unsqueeze(-1).expand(-1, verts.shape[-1]))
-    v2 = torch.gather(verts, -2, i2.unsqueeze(-1).expand(-1, verts.shape[-1]))
+    v0 = verts[i0, :]
+    v1 = verts[i1, :]
+    v2 = verts[i2, :]
 
     a0 = safe_normalize(v1 - v0)
     a1 = safe_normalize(custom_cross(a0, v2 - v0))

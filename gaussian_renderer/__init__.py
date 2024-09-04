@@ -158,19 +158,20 @@ def render(viewpoint_camera, pc : Union[GaussianModel, FlameGaussianModel], pipe
             [rotations_np[idx][0], rotations_np[idx][1], rotations_np[idx][2], rotations_np[idx][3]],
             dtype=np.float32,
         )
-        dir = position - np.array([0.0, 0.0, 1])
-        dir /= np.linalg.norm(dir)
-        color = np.concatenate([calculate_color(shs_np[idx], dir), opacity_np[idx]])
+        # dir = position - np.array([0.0, 0.0, 1])
+        # dir /= np.linalg.norm(dir)
+        # color = np.concatenate([calculate_color(shs_np[idx], dir), opacity_np[idx]])
 
-        # SH_C0 = 0.28209479177387814
-        # color = np.array(
-        #     [
-        #         0.5 + SH_C0 * shs_np[idx][0][0],
-        #         0.5 + SH_C0 * shs_np[idx][0][1],
-        #         0.5 + SH_C0 * shs_np[idx][0][2],
-        #         opacity_np[idx][0],
-        #     ]
-        # )
+        SH_C0 = 0.28209479177387814
+        color = np.array(
+            [
+                0.5 + SH_C0 * shs_np[idx][0][0],
+                0.5 + SH_C0 * shs_np[idx][0][1],
+                0.5 + SH_C0 * shs_np[idx][0][2],
+                opacity_np[idx][0],
+            ]
+        )
+
         buffer.write(position.tobytes())
         buffer.write(scales_.tobytes())
         buffer.write((color * 255).clip(0, 255).astype(np.uint8).tobytes())
