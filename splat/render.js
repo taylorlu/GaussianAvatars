@@ -522,18 +522,52 @@ async function main() {
     const socketUrl = "ws://10.10.22.222:8001";
     const ws = new WebSocket(socketUrl);
 
-    ws.onmessage = async (event) => {
-        let coeff = new Float32Array(await event.data.arrayBuffer());
-        const output = model.predict(tf.tensor(coeff));
+    let taskQueue = [];    // 用于存储待处理的消息事件
+    let isProcessing = false; // 标识是否正在处理任务
+    // console.log(`Using backend: ${tf.getBackend()}`);
+    fps.innerText = tf.getBackend()
+    await tf.setBackend('webgl');
+    await tf.ready();
 
-        splatData = new Float32Array(output.dataSync());
-
-        console.log('length: ', splatData.length, splatData.length / rowLength);
-        worker.postMessage({
-            buffer: splatData.buffer,
-            vertexCount: Math.floor(splatData.length / rowLength),
-        });
+    ws.onmessage = (event) => {
+        // 将消息事件添加到任务队列中
+        taskQueue.push(event);
+        processQueue(); // 尝试处理队列中的任务
     };
+
+    async function processQueue() {
+        if (isProcessing || taskQueue.length === 0) {
+            return;
+        }
+    
+        isProcessing = true;
+    
+        const event = taskQueue.shift(); // 取出队列中的第一个任务
+        try {
+            lastFrame = Date.now();
+            
+            let coeff = new Float32Array(await event.data.arrayBuffer());
+            const output = model.predict(tf.tensor(coeff));
+
+            splatData = new Float32Array(output.dataSync());
+            worker.postMessage({
+                buffer: splatData.buffer,
+                vertexCount: Math.floor(splatData.length / rowLength),
+            });
+
+            const now = Date.now();
+
+            const currentFps = 1000 / (now - lastFrame) || 0;
+            fps.innerText = Math.round(currentFps) + " fps";
+        } catch (error) {
+            console.error("Error processing message:", error);
+        } finally {
+            isProcessing = false;       
+            if(taskQueue.length > 0) {   // 如果队列中还有任务，继续处理
+                processQueue();
+            }
+        }
+    }
 }
 
 main().catch((err) => {
