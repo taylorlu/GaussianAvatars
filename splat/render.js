@@ -113,7 +113,6 @@ function createWorker(self) {
     function generateTexture() {
         if (!buffer) return;
         const f_buffer = new Float32Array(buffer);
-        const u_buffer = new Uint8Array(buffer);
 
         var texwidth = 1024 * 2; // Set to your desired width
         var texheight = Math.ceil((2 * vertexCount) / texwidth); // Set to your desired height
@@ -127,42 +126,32 @@ function createWorker(self) {
         // load it into webgl.
         for (let i = 0; i < vertexCount; i++) {
             // x, y, z
-            texdata_f[8 * i + 0] = f_buffer[14 * i + 0];
-            texdata_f[8 * i + 1] = f_buffer[14 * i + 1];
-            texdata_f[8 * i + 2] = f_buffer[14 * i + 2];
+            texdata_f[8 * i + 0] = f_buffer[19 * i + 0];
+            texdata_f[8 * i + 1] = f_buffer[19 * i + 1];
+            texdata_f[8 * i + 2] = f_buffer[19 * i + 2];
 
             // r, g, b, a
-            texdata_c[4 * (8 * i + 7) + 0] = f_buffer[14 * i + 6 + 0];
-            texdata_c[4 * (8 * i + 7) + 1] = f_buffer[14 * i + 6 + 1];
-            texdata_c[4 * (8 * i + 7) + 2] = f_buffer[14 * i + 6 + 2];
-            texdata_c[4 * (8 * i + 7) + 3] = f_buffer[14 * i + 6 + 3];
+            texdata_c[4 * (8 * i + 7) + 0] = f_buffer[19 * i + 6 + 0];
+            texdata_c[4 * (8 * i + 7) + 1] = f_buffer[19 * i + 6 + 1];
+            texdata_c[4 * (8 * i + 7) + 2] = f_buffer[19 * i + 6 + 2];
+            texdata_c[4 * (8 * i + 7) + 3] = f_buffer[19 * i + 6 + 3];
 
             // quaternions
             let scale = [
-                f_buffer[14 * i + 3 + 0],
-                f_buffer[14 * i + 3 + 1],
-                f_buffer[14 * i + 3 + 2],
+                f_buffer[19 * i + 3 + 0],
+                f_buffer[19 * i + 3 + 1],
+                f_buffer[19 * i + 3 + 2],
             ];
-            let rot = [
-                f_buffer[14 * i + 10 + 0],
-                f_buffer[14 * i + 10 + 1],
-                f_buffer[14 * i + 10 + 2],
-                f_buffer[14 * i + 10 + 3],
-            ];
-
-            // Compute the matrix product of S and R (M = S * R)
-            const M = [
-                1.0 - 2.0 * (rot[2] * rot[2] + rot[3] * rot[3]),
-                2.0 * (rot[1] * rot[2] + rot[0] * rot[3]),
-                2.0 * (rot[1] * rot[3] - rot[0] * rot[2]),
-
-                2.0 * (rot[1] * rot[2] - rot[0] * rot[3]),
-                1.0 - 2.0 * (rot[1] * rot[1] + rot[3] * rot[3]),
-                2.0 * (rot[2] * rot[3] + rot[0] * rot[1]),
-
-                2.0 * (rot[1] * rot[3] + rot[0] * rot[2]),
-                2.0 * (rot[2] * rot[3] - rot[0] * rot[1]),
-                1.0 - 2.0 * (rot[1] * rot[1] + rot[2] * rot[2]),
+            let M = [
+                f_buffer[19 * i + 10 + 0],
+                f_buffer[19 * i + 10 + 1],
+                f_buffer[19 * i + 10 + 2],
+                f_buffer[19 * i + 10 + 3],
+                f_buffer[19 * i + 10 + 4],
+                f_buffer[19 * i + 10 + 5],
+                f_buffer[19 * i + 10 + 6],
+                f_buffer[19 * i + 10 + 7],
+                f_buffer[19 * i + 10 + 8],
             ].map((k, i) => k * scale[Math.floor(i / 3)]);
 
             const sigma = [
@@ -205,9 +194,9 @@ function createWorker(self) {
         let sizeList = new Int32Array(vertexCount);
         for (let i = 0; i < vertexCount; i++) {
             let depth =
-                ((viewProj[2] * f_buffer[14 * i + 0] +
-                    viewProj[6] * f_buffer[14 * i + 1] +
-                    viewProj[10] * f_buffer[14 * i + 2]) *
+                ((viewProj[2] * f_buffer[19 * i + 0] +
+                    viewProj[6] * f_buffer[19 * i + 1] +
+                    viewProj[10] * f_buffer[19 * i + 2]) *
                     4096) |
                 0;
             sizeList[i] = depth;
@@ -489,7 +478,7 @@ async function main() {
     let lastFrame = 0;
     let avgFps = 0;
 
-    const frameInterval = 1000 / 45; // 每隔 1/30 秒执行一次
+    const frameInterval = 1000 / 25;
     let lastFrameTime = Date.now();
     
     const frame = () => {
@@ -518,7 +507,7 @@ async function main() {
 
     const model = await tf.loadGraphModel('http://10.10.22.222:8000/outtfjs/model.json');
 
-    const rowLength = 3 + 3 + 4 + 4;
+    const rowLength = 3 + 3 + 4 + 9;
     const socketUrl = "ws://10.10.22.222:8001";
     const ws = new WebSocket(socketUrl);
 
@@ -546,6 +535,7 @@ async function main() {
         try {
             lastFrame = Date.now();
             
+            tf.engine().startScope();
             let coeff = new Float32Array(await event.data.arrayBuffer());
             const output = model.predict(tf.tensor(coeff));
 
@@ -554,6 +544,7 @@ async function main() {
                 buffer: splatData.buffer,
                 vertexCount: Math.floor(splatData.length / rowLength),
             });
+            tf.engine().endScope();
 
             const now = Date.now();
 
