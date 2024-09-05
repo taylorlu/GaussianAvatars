@@ -18,7 +18,7 @@ class MyGaussianModel(nn.Module):
         super().__init__()
         self.gaussians = FlameGaussianModel(sh_degree=3)
         GaussianModel.load_ply(self.gaussians, 'output/point_cloud.ply')
-        self.flame_model = FlameHead(300, 100)
+        self.flame_model = FlameHead(100, 50)
         self.register_buffer("static_offset", torch.from_numpy(np.load('output/flame_param.npz')['static_offset']))
         self.rot = unitquat_to_rotmat(quat_wxyz_to_xyzw(self.rotation_activation(self.gaussians._rotation)))
 
@@ -26,13 +26,13 @@ class MyGaussianModel(nn.Module):
         return x / (torch.sqrt(torch.sum(x ** 2, dim=1, keepdim=True)) + 1e-12)
 
     def forward(self, x):
-        shape = x[None, :300]
-        expr = x[None, 300:400]
-        rotation = x[None, 400:403]
-        neck = x[None, 403:406]
-        jaw = x[None, 406:409]
-        eyes = x[None, 409:415]
-        translation = x[None, 415:418]
+        shape = x[None, :100]
+        expr = x[None, 100:150]
+        rotation = x[None, 150:153]
+        neck = x[None, 153:156]
+        jaw = x[None, 156:159]
+        eyes = x[None, 159:165]
+        translation = x[None, 165:168]
         verts = self.flame_model(shape, expr, rotation, neck, jaw, eyes, translation, return_landmarks=False, static_offset=self.static_offset)
 
         faces = self.flame_model.faces
@@ -68,7 +68,7 @@ class MyGaussianModel(nn.Module):
         return output
 
 device = torch.device('cuda')
-torch_input = torch.zeros([418]).to(device)
+torch_input = torch.zeros([168]).to(device)
 gaussian_model = MyGaussianModel().to(device).eval()
 output = gaussian_model(torch_input)
 

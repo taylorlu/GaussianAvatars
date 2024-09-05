@@ -186,9 +186,9 @@ function createWorker(self) {
         } else {
             lastVertexCount = vertexCount;
         }
+        console.time("sort");
         generateTexture();
 
-        console.time("sort");
         let maxDepth = -Infinity;
         let minDepth = Infinity;
         let sizeList = new Int32Array(vertexCount);
@@ -497,7 +497,7 @@ async function main() {
             } else {
                 gl.clear(gl.COLOR_BUFFER_BIT);
             }
-            fps.innerText = Math.round(avgFps) + " fps";
+            // fps.innerText = Math.round(avgFps) + " fps";
             lastFrame = now;
             lastFrameTime = now;
         }
