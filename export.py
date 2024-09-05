@@ -52,18 +52,27 @@ class MyGaussianModel(nn.Module):
 
         opacity = self.gaussians.opacity_activation(self.gaussians._opacity)
 
-        scaling = self.gaussians.scaling_activation(self.gaussians._scaling)
-        scales = scaling * self.gaussians.face_scaling[self.gaussians.binding]
-
         features_dc = self.gaussians._features_dc
         features_rest = self.gaussians._features_rest
         shs = torch.cat((features_dc, features_rest), dim=1)
         color = (torch.cat([0.5 + 0.282 * shs[:, 0, :], opacity], -1) * 255).clip(0, 255)
 
-        face_orien_mat = self.gaussians.face_orien_mat[self.gaussians.binding]
-        rotations = torch.matmul(face_orien_mat, self.rot).transpose(2, 1).reshape([-1, 9])
+        scaling = self.gaussians.scaling_activation(self.gaussians._scaling)
+        scales = scaling * self.gaussians.face_scaling[self.gaussians.binding]
 
-        output = torch.cat([xyz, scales, color, rotations], dim=-1)
+        face_orien_mat = self.gaussians.face_orien_mat[self.gaussians.binding]
+        rotations = torch.matmul(face_orien_mat, self.rot).transpose(2, 1)
+
+        simga = torch.einsum('bij,bi->bij', rotations, scales)
+
+        simga = torch.cat([torch.sum(simga[:, :, 0] ** 2, dim=1, keepdim=True), 
+                           torch.sum(simga[:, :, 0] * simga[:, :, 1], dim=1, keepdim=True), 
+                           torch.sum(simga[:, :, 0] * simga[:, :, 2], dim=1, keepdim=True), 
+                           torch.sum(simga[:, :, 1] ** 2, dim=1, keepdim=True), 
+                           torch.sum(simga[:, :, 1] * simga[:, :, 2], dim=1, keepdim=True), 
+                           torch.sum(simga[:, :, 2] ** 2, dim=1, keepdim=True)], dim=1)
+
+        output = torch.cat([xyz, color, simga], dim=-1)
 
         return output
 

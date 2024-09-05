@@ -126,41 +126,24 @@ function createWorker(self) {
         // load it into webgl.
         for (let i = 0; i < vertexCount; i++) {
             // x, y, z
-            texdata_f[8 * i + 0] = f_buffer[19 * i + 0];
-            texdata_f[8 * i + 1] = f_buffer[19 * i + 1];
-            texdata_f[8 * i + 2] = f_buffer[19 * i + 2];
+            texdata_f[8 * i + 0] = f_buffer[13 * i + 0];
+            texdata_f[8 * i + 1] = f_buffer[13 * i + 1];
+            texdata_f[8 * i + 2] = f_buffer[13 * i + 2];
 
             // r, g, b, a
-            texdata_c[4 * (8 * i + 7) + 0] = f_buffer[19 * i + 6 + 0];
-            texdata_c[4 * (8 * i + 7) + 1] = f_buffer[19 * i + 6 + 1];
-            texdata_c[4 * (8 * i + 7) + 2] = f_buffer[19 * i + 6 + 2];
-            texdata_c[4 * (8 * i + 7) + 3] = f_buffer[19 * i + 6 + 3];
+            texdata_c[4 * (8 * i + 7) + 0] = f_buffer[13 * i + 3 + 0];
+            texdata_c[4 * (8 * i + 7) + 1] = f_buffer[13 * i + 3 + 1];
+            texdata_c[4 * (8 * i + 7) + 2] = f_buffer[13 * i + 3 + 2];
+            texdata_c[4 * (8 * i + 7) + 3] = f_buffer[13 * i + 3 + 3];
 
-            // quaternions
-            let scale = [
-                f_buffer[19 * i + 3 + 0],
-                f_buffer[19 * i + 3 + 1],
-                f_buffer[19 * i + 3 + 2],
-            ];
-            let M = [
-                f_buffer[19 * i + 10 + 0],
-                f_buffer[19 * i + 10 + 1],
-                f_buffer[19 * i + 10 + 2],
-                f_buffer[19 * i + 10 + 3],
-                f_buffer[19 * i + 10 + 4],
-                f_buffer[19 * i + 10 + 5],
-                f_buffer[19 * i + 10 + 6],
-                f_buffer[19 * i + 10 + 7],
-                f_buffer[19 * i + 10 + 8],
-            ].map((k, i) => k * scale[Math.floor(i / 3)]);
-
-            const sigma = [
-                M[0] * M[0] + M[3] * M[3] + M[6] * M[6],
-                M[0] * M[1] + M[3] * M[4] + M[6] * M[7],
-                M[0] * M[2] + M[3] * M[5] + M[6] * M[8],
-                M[1] * M[1] + M[4] * M[4] + M[7] * M[7],
-                M[1] * M[2] + M[4] * M[5] + M[7] * M[8],
-                M[2] * M[2] + M[5] * M[5] + M[8] * M[8],
+            // variance
+            let sigma = [
+                f_buffer[13 * i + 7 + 0],
+                f_buffer[13 * i + 7 + 1],
+                f_buffer[13 * i + 7 + 2],
+                f_buffer[13 * i + 7 + 3],
+                f_buffer[13 * i + 7 + 4],
+                f_buffer[13 * i + 7 + 5],
             ];
 
             texdata[8 * i + 4] = packHalf2x16(4 * sigma[0], 4 * sigma[1]);
@@ -194,9 +177,9 @@ function createWorker(self) {
         let sizeList = new Int32Array(vertexCount);
         for (let i = 0; i < vertexCount; i++) {
             let depth =
-                ((viewProj[2] * f_buffer[19 * i + 0] +
-                    viewProj[6] * f_buffer[19 * i + 1] +
-                    viewProj[10] * f_buffer[19 * i + 2]) *
+                ((viewProj[2] * f_buffer[13 * i + 0] +
+                    viewProj[6] * f_buffer[13 * i + 1] +
+                    viewProj[10] * f_buffer[13 * i + 2]) *
                     4096) |
                 0;
             sizeList[i] = depth;
@@ -507,7 +490,7 @@ async function main() {
 
     const model = await tf.loadGraphModel('http://10.10.22.222:8000/outtfjs/model.json');
 
-    const rowLength = 3 + 3 + 4 + 9;
+    const rowLength = 3 + 4 + 6;
     const socketUrl = "ws://10.10.22.222:8001";
     const ws = new WebSocket(socketUrl);
 
