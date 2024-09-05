@@ -7,7 +7,7 @@ import onnx
 # from nobuco import pytorch_to_keras, ChannelOrder
 from scene.flame_gaussian_model import FlameGaussianModel
 from scene.gaussian_model import GaussianModel
-from roma import rotmat_to_unitquat, quat_xyzw_to_wxyz, quat_product, quat_wxyz_to_xyzw
+from roma import quat_wxyz_to_xyzw, unitquat_to_rotmat
 from utils.graphics_utils import compute_face_orientation
 import os
 import numpy as np
@@ -20,6 +20,7 @@ class MyGaussianModel(nn.Module):
         GaussianModel.load_ply(self.gaussians, 'output/point_cloud.ply')
         self.flame_model = FlameHead(300, 100)
         self.register_buffer("static_offset", torch.from_numpy(np.load('output/flame_param.npz')['static_offset']))
+        self.rot = unitquat_to_rotmat(quat_wxyz_to_xyzw(self.rotation_activation(self.gaussians._rotation)))
 
     def rotation_activation(self, x):
         return x / (torch.sqrt(torch.sum(x ** 2, dim=1, keepdim=True)) + 1e-12)
@@ -54,17 +55,14 @@ class MyGaussianModel(nn.Module):
         scaling = self.gaussians.scaling_activation(self.gaussians._scaling)
         scales = scaling * self.gaussians.face_scaling[self.gaussians.binding]
 
-        rot = self.rotation_activation(self.gaussians._rotation)
-        self.gaussians.face_orien_quat = quat_xyzw_to_wxyz(rotmat_to_unitquat(self.gaussians.face_orien_mat))
-        face_orien_quat = self.rotation_activation(self.gaussians.face_orien_quat[self.gaussians.binding])
-        rotations = quat_xyzw_to_wxyz(quat_product(quat_wxyz_to_xyzw(face_orien_quat), quat_wxyz_to_xyzw(rot)))
-
         features_dc = self.gaussians._features_dc
         features_rest = self.gaussians._features_rest
         shs = torch.cat((features_dc, features_rest), dim=1)
-
         color = (torch.cat([0.5 + 0.282 * shs[:, 0, :], opacity], -1) * 255).clip(0, 255)
-        rotations = rotations / torch.norm(rotations, dim=-1, keepdim=True)
+
+        face_orien_mat = self.gaussians.face_orien_mat[self.gaussians.binding]
+        rotations = torch.matmul(face_orien_mat, self.rot).transpose(2, 1).reshape([-1, 9])
+
         output = torch.cat([xyz, scales, color, rotations], dim=-1)
 
         return output
