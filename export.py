@@ -39,14 +39,9 @@ class MyGaussianModel(nn.Module):
 
         # position
         self.gaussians.face_center = triangles.mean(dim=-2)[0]
-        self.gaussians.face_center = self.gaussians.face_center.to(self.gaussians._xyz.device)
 
         # orientation and scale
         self.gaussians.face_orien_mat, self.gaussians.face_scaling = compute_face_orientation(verts[0], faces, return_scale=True)
-        
-        self.gaussians.face_orien_mat = self.gaussians.face_orien_mat.to(self.gaussians._xyz.device)
-        self.gaussians.face_scaling = self.gaussians.face_scaling.to(self.gaussians._xyz.device)
-        self.gaussians.face_orien_quat = quat_xyzw_to_wxyz(rotmat_to_unitquat(self.gaussians.face_orien_mat))  # roma
 
         xyz = torch.bmm(self.gaussians.face_orien_mat[self.gaussians.binding], self.gaussians._xyz[..., None])
 
@@ -60,6 +55,7 @@ class MyGaussianModel(nn.Module):
         scales = scaling * self.gaussians.face_scaling[self.gaussians.binding]
 
         rot = self.rotation_activation(self.gaussians._rotation)
+        self.gaussians.face_orien_quat = quat_xyzw_to_wxyz(rotmat_to_unitquat(self.gaussians.face_orien_mat))
         face_orien_quat = self.rotation_activation(self.gaussians.face_orien_quat[self.gaussians.binding])
         rotations = quat_xyzw_to_wxyz(quat_product(quat_wxyz_to_xyzw(face_orien_quat), quat_wxyz_to_xyzw(rot)))
 
@@ -73,10 +69,10 @@ class MyGaussianModel(nn.Module):
 
         return output
 
-
-torch_input = torch.zeros([418])
-gaussian_model = MyGaussianModel().eval()
-# output = gaussian_model(torch_input)
+device = torch.device('cuda')
+torch_input = torch.zeros([418]).to(device)
+gaussian_model = MyGaussianModel().to(device).eval()
+output = gaussian_model(torch_input)
 
 output_dir = 'exp'
 if(not os.path.exists(output_dir)):
