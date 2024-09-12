@@ -96,11 +96,11 @@ def create_sequence(asset_name, camera_transform_array, camera_rotation_array, f
     channel_rotation_z = transform_section.get_channels()[5]
 
     camera_location_x = camera_transform_array[0].get_editor_property("translation").get_editor_property("x")
-    camera_location_y = camera_transform_array[1].get_editor_property("translation").get_editor_property("y")
-    camera_location_z = camera_transform_array[2].get_editor_property("translation").get_editor_property("z")
+    camera_location_y = camera_transform_array[0].get_editor_property("translation").get_editor_property("y")
+    camera_location_z = camera_transform_array[0].get_editor_property("translation").get_editor_property("z")
     camera_rotate_roll = camera_rotation_array[0].get_editor_property("roll")
-    camera_rotate_pitch = camera_rotation_array[1].get_editor_property("pitch")
-    camera_rotate_yaw = camera_rotation_array[2].get_editor_property("yaw")
+    camera_rotate_pitch = camera_rotation_array[0].get_editor_property("pitch")
+    camera_rotate_yaw = camera_rotation_array[0].get_editor_property("yaw")
 
     new_time = unreal.FrameNumber(value=0)
     channel_location_x.add_key(new_time, camera_location_x, 0.0)
