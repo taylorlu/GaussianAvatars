@@ -64,7 +64,6 @@ def create_sequence(asset_name, camera_transform_array, camera_rotation_array, f
     camera_component = camera_actor.get_cine_camera_component()
 
     # Set FOV and lens settings
-    ratio = math.tan(film_fov / 360.0 * math.pi) * 2
     filmback = camera_component.get_editor_property("filmback")
     filmback.set_editor_property("sensor_height", 60)
     filmback.set_editor_property("sensor_width", 60)
@@ -75,11 +74,12 @@ def create_sequence(asset_name, camera_transform_array, camera_rotation_array, f
     lens_settings.set_editor_property("min_f_stop", 1.2)
     lens_settings.set_editor_property("max_f_stop", 500)
     camera_component.set_editor_property("current_aperture", 18)
-    camera_component.set_editor_property("current_focal_length", 10)
 
     # we cannot directly set field_of_view here, it can be derivative by current_focal_length and sensor_width
     # tan(fov_x / 2) = (sensor_width / 2) / current_focal_length
-    # camera_component.set_editor_property("field_of_view", 50) # no use here.
+    # suppose sensor_width = 60, current_focal_length = 40, then fov = 73.7398 deg
+    ratio = math.tan(film_fov / 360.0 * math.pi) * 2
+    camera_component.set_editor_property("current_focal_length", filmback.get_editor_property("sensor_width") / ratio)
 
     # Add the camera to the sequence
     camera_binding = sequence.add_possessable(camera_actor)
