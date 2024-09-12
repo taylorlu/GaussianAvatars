@@ -2,7 +2,6 @@ import unreal
 import os
 import json
 import math
-import time
 
 # sequence asset path
 sequence_asset_path = '/Game/Render_Sequence.Render_Sequence'
@@ -43,8 +42,8 @@ def create_sequence(asset_name, camera_transform_array, camera_rotation_array, f
     sequence = unreal.AssetToolsHelpers.get_asset_tools().create_asset(asset_name, package_path, unreal.LevelSequence,
                                                                        unreal.LevelSequenceFactoryNew())
     sequence.set_display_rate(unreal.FrameRate(numerator=25, denominator=1))
-    total_duration = 1  # Total sequence duration depends on the number of cameras
-    total_frame = 25
+    total_duration = 0.2  # Total sequence duration depends on the number of cameras
+    total_frame = 5
     sequence.set_playback_start_seconds(0)
     sequence.set_playback_end_seconds(total_duration)
 
@@ -76,6 +75,11 @@ def create_sequence(asset_name, camera_transform_array, camera_rotation_array, f
     lens_settings.set_editor_property("min_f_stop", 1.2)
     lens_settings.set_editor_property("max_f_stop", 500)
     camera_component.set_editor_property("current_aperture", 18)
+    camera_component.set_editor_property("current_focal_length", 10)
+
+    # we cannot directly set field_of_view here, it can be derivative by current_focal_length and sensor_width
+    # tan(fov_x / 2) = (sensor_width / 2) / current_focal_length
+    # camera_component.set_editor_property("field_of_view", 50) # no use here.
 
     # Add the camera to the sequence
     camera_binding = sequence.add_possessable(camera_actor)
