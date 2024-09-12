@@ -16,13 +16,12 @@ def read_json_file(path):
     film_fov = file_json.get('film_fov', None)  # camera film fov
     film_resolution = file_json.get("film_resolution", [512, 512])  # camera file resolution
     delay_every_frame = file_json.get("delay_every_frame", 3.0)  # sequence run delay every frame
-    camera_json = file_json['camera_data']  # camera data
+    camera_transforms = file_json['camera_transform']  # camera data
 
     camera_transform_array = []
     camera_rotation_array = []
-    for camera in camera_json:
-        camera_transform = camera_json[camera]["camera_transform"]
-
+    for camera_transform in camera_transforms:
+        
         camera_transform_array.append(unreal.Transform(
             location=[camera_transform[0], camera_transform[1], camera_transform[2]],
             rotation=[camera_transform[3], camera_transform[4], camera_transform[5]],
