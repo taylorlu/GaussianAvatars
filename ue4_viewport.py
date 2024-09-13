@@ -36,7 +36,7 @@ def read_json_file(path):
     return camera_transform_array, camera_rotation_array, export_path, film_fov, film_resolution, delay_every_frame
 
 
-def create_sequence(asset_name, camera_transform_array, camera_rotation_array, film_fov, package_path='/Game/'):
+def create_sequence(asset_name, camera_transform_array, camera_rotation_array, film_fov, film_resolution, package_path='/Game/'):
     # Create a new sequence asset
     sequence = unreal.AssetToolsHelpers.get_asset_tools().create_asset(asset_name, package_path, unreal.LevelSequence,
                                                                        unreal.LevelSequenceFactoryNew())
@@ -64,7 +64,7 @@ def create_sequence(asset_name, camera_transform_array, camera_rotation_array, f
 
     # Set FOV and lens settings
     filmback = camera_component.get_editor_property("filmback")
-    filmback.set_editor_property("sensor_height", 60)
+    filmback.set_editor_property("sensor_height", 60*film_resolution[1]/film_resolution[0])
     filmback.set_editor_property("sensor_width", 60)
 
     lens_settings = camera_component.get_editor_property("lens_settings")
@@ -229,7 +229,7 @@ def main():
 
     check_sequence_asset_exist(root_dir)
 
-    transform_section = create_sequence('Render_Sequence', camera_transform_array, camera_rotation_array, film_fov)
+    transform_section = create_sequence('Render_Sequence', camera_transform_array, camera_rotation_array, film_fov, film_resolution)
 
     # Prepare the callback
     on_finished_callback = unreal.OnRenderMovieStopped()
