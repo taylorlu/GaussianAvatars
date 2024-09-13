@@ -25,7 +25,6 @@ def make_json():
     data_dict = {
         "film_fov": 53.38,
         "film_resolution": [512, 512],
-        "delay_every_frame": 1.0,
         "output_image_path": r"E:\workplace\AvatarSplat\GaussianAvatars\splat\meta_faces",
         "camera_transform": []
     }

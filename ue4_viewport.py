@@ -15,8 +15,8 @@ def read_json_file(path):
     export_path = file_json['output_image_path']  # image export path
     film_fov = file_json.get('film_fov', None)  # camera film fov
     film_resolution = file_json.get("film_resolution", [512, 512])  # camera file resolution
-    delay_every_frame = file_json.get("delay_every_frame", 3.0)  # sequence run delay every frame
     camera_transforms = file_json['camera_transform']  # camera data
+    delay_every_frame = 0
 
     camera_transform_array = []
     camera_rotation_array = []
@@ -41,8 +41,9 @@ def create_sequence(asset_name, camera_transform_array, camera_rotation_array, f
     sequence = unreal.AssetToolsHelpers.get_asset_tools().create_asset(asset_name, package_path, unreal.LevelSequence,
                                                                        unreal.LevelSequenceFactoryNew())
     sequence.set_display_rate(unreal.FrameRate(numerator=25, denominator=1))
-    total_duration = 0.2  # Total sequence duration depends on the number of cameras
-    total_frame = 5
+    # we should take into acount the warmup frames at the beginning.
+    total_duration = 8  # Total sequence duration depends on the number of cameras
+    total_frame = 200
     sequence.set_playback_start_seconds(0)
     sequence.set_playback_end_seconds(total_duration)
 
@@ -145,6 +146,7 @@ def render_sequence_to_movie(current_camera_index, export_path, film_resolution,
     capture_settings.close_editor_when_capture_starts = False
     capture_settings.additional_command_line_arguments = "-NOSCREENMESSAGES"
     capture_settings.delay_every_frame = delay_every_frame
+    # capture_settings.warm_up_frame_count = 25
 
     capture_settings.level_sequence_asset = unreal.SoftObjectPath(sequence_asset_path)
 
