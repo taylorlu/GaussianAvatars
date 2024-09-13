@@ -72,7 +72,7 @@ def create_sequence(asset_name, camera_transform_array, camera_rotation_array, f
     lens_settings.set_editor_property("max_focal_length", 1000)
     lens_settings.set_editor_property("min_f_stop", 1.2)
     lens_settings.set_editor_property("max_f_stop", 500)
-    camera_component.set_editor_property("current_aperture", 18)
+    camera_component.set_editor_property("current_aperture", 100)
 
     # we cannot directly set field_of_view here, it can be derivative by current_focal_length and sensor_width
     # tan(fov_x / 2) = (sensor_width / 2) / current_focal_length
