@@ -13,57 +13,97 @@
 			content="black-translucent"
 		/>
 		<style>
-			body {
-				overflow: hidden;
-				margin: 0;
-				height: 100vh;
-				width: 100vw;
-				font-family: sans-serif;
-				background: black;
-    			text-shadow: 0 0 3px black;
-			}
-			a, body {
-				color: white;
-			}
+        body {
+            overflow: hidden;
+            margin: 0;
+            height: 100vh;
+            width: 100vw;
+            font-family: sans-serif;
+            background: black;
+            text-shadow: 0 0 3px black;
+        }
+        a, body {
+            color: white;
+        }
 
-			.scene,
-			#message {
-				position: absolute;
-				display: flex;
-				top: 0;
-				right: 0;
-				left: 0;
-				bottom: 0;
-				z-index: 2;
-				height: 100%;
-				width: 100%;
-				align-items: center;
-				justify-content: center;
-			}
-			#message {
-				font-weight: bold;
-				font-size: large;
-				color: red;
-				pointer-events: none;
-			}
+        .scene,
+        #message {
+            position: absolute;
+            display: flex;
+            top: 0;
+            right: 0;
+            left: 0;
+            bottom: 0;
+            z-index: 2;
+            height: 100%;
+            width: 100%;
+            align-items: center;
+            justify-content: center;
+        }
+        #message {
+            font-weight: bold;
+            font-size: large;
+            color: red;
+            pointer-events: none;
+        }
 
-			#quality {
-				position: absolute;
-				bottom: 10px;
-				z-index: 999;
-				right: 10px;
-			}
+        #quality {
+            position: absolute;
+            bottom: 10px;
+            z-index: 999;
+            right: 10px;
+        }
 
-			#canvas {
-				display: block;
-				position: absolute;
-				top: 0;
-				left: 0;
-				width: 100%;
-				height: 100%;
-				touch-action: none;
-			}
+        #canvas {
+            display: block;
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            touch-action: none;
+            z-index: 1;
+        }
+        
+        .control-panel {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            z-index: 2;
+            display: flex;
+            flex-direction: column;
+            gap: 10px; /* 添加间距 */
+        }
+        
+        #textInput {
+            width: 300px;
+            height: 300px;
+            resize: both;
+        }
+        
+        #processButton {
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            border: none;
+            border-radius: 5px;
+            background-color: #28a745;
+            color: white;
+            transition: background-color 0.3s;
+        }
 
+        #processButton:hover {
+            background-color: #218838;
+        }
+
+        #dropdownMenu {
+            padding: 10px;
+            font-size: 16px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            background-color: white;
+            color: black;
+        }
 		</style>
 	</head>
 	<body>
@@ -75,9 +115,27 @@
 		<div id="message"></div>
 		<canvas id="canvas"></canvas>
 
+		<div class="control-panel">
+			<textarea id="textInput" placeholder="Enter text here"></textarea>
+			<select id="dropdownMenu">
+				<option value="BV102_streaming">陈强</option>
+				<option value="BV705_streaming">李凯</option>
+				<option value="BV213_streaming">王刚</option>
+			</select>
+			<button id="processButton">TTS+数字人</button>
+		</div>
+
 		<div id="quality">
 			<span id="fps"></span>
 		</div>
 		<script src="render.js"></script>
+		<script>
+			const textInput = document.getElementById('textInput');
+			const processButton = document.getElementById('processButton');
+	
+			textInput.addEventListener('input', () => {
+				processButton.disabled = textInput.value.trim() === '';
+			});
+		</script>
 	</body>
 </html>

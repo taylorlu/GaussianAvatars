@@ -169,7 +169,7 @@ function createWorker(self) {
         } else {
             lastVertexCount = vertexCount;
         }
-        console.time("sort");
+        // console.time("sort");
         generateTexture();
 
         let maxDepth = -Infinity;
@@ -201,7 +201,7 @@ function createWorker(self) {
         for (let i = 0; i < vertexCount; i++)
             depthIndex[starts0[sizeList[i]]++] = i;
 
-        console.timeEnd("sort");
+        // console.timeEnd("sort");
 
         lastProj = viewProj;
         self.postMessage({ depthIndex, viewProj, vertexCount }, [
@@ -457,42 +457,11 @@ async function main() {
         }
     };
 
-    let vertexCount = 0;
-    let lastFrame = 0;
-    let avgFps = 0;
-
-    const frameInterval = 1000 / 25;
-    let lastFrameTime = Date.now();
-    
-    const frame = () => {
-        const now = Date.now();
-        if (now - lastFrameTime >= frameInterval) {
-            const viewProj = multiply4(projectionMatrix, viewMatrix);
-            worker.postMessage({ view: viewProj });
-    
-            const currentFps = 1000 / (now - lastFrame) || 0;
-            avgFps = avgFps * 0.9 + currentFps * 0.1;
-    
-            if (vertexCount > 0) {
-                gl.uniformMatrix4fv(u_view, false, viewMatrix);
-                gl.clear(gl.COLOR_BUFFER_BIT);
-                gl.drawArraysInstanced(gl.TRIANGLE_FAN, 0, 4, vertexCount);
-            } else {
-                gl.clear(gl.COLOR_BUFFER_BIT);
-            }
-            // fps.innerText = Math.round(avgFps) + " fps";
-            lastFrame = now;
-            lastFrameTime = now;
-        }
-    };
-    
-    setInterval(frame, frameInterval);
-
-    const model = await tf.loadGraphModel('http://10.10.22.222:8000/outtfjs/model.json');
+    const model = await tf.loadGraphModel('http://127.0.0.1:8000/outtfjs/model.json');
+    model.predict(tf.zeros([168]));
 
     const rowLength = 3 + 4 + 6;
-    const socketUrl = "ws://10.10.22.222:8001";
-    const ws = new WebSocket(socketUrl);
+    const apiUrl = "http://172.17.12.143:8001/predict";
 
     let taskQueue = [];    // 用于存储待处理的消息事件
     let isProcessing = false; // 标识是否正在处理任务
@@ -501,11 +470,65 @@ async function main() {
     await tf.setBackend('webgl');
     await tf.ready();
 
-    ws.onmessage = (event) => {
-        // 将消息事件添加到任务队列中
-        taskQueue.push(event);
-        processQueue(); // 尝试处理队列中的任务
-    };
+    // Play audio using AudioContext
+    let audioContext = null;
+
+    let vertexCount = 0;
+    let play_end = false;
+    const frame_in_sec = 1.0/25;
+    let count = 0;
+    let coeffArray = null;
+
+    // Animation frame rendering function
+    function renderFrame(timestamp) {
+        if(!play_end ) {
+            const audioElapsed = audioContext ? audioContext.currentTime : 0;
+            const expectedFrame = Math.floor(audioElapsed / frame_in_sec);
+            // console.error(count, expectedFrame);
+
+            if (expectedFrame > count) {
+                count = expectedFrame;
+                // console.log(`Rendering frame ${count} at audio time ${audioElapsed.toFixed(2)}s`);
+
+                if(count<coeffArray.shape[0]) {
+                    tf.engine().startScope();
+                    // console.error(count, coeffArray.shape);
+                    // console.log(coeffArray.slice([count, 0], [1, -1]).shape);
+                    const output = model.predict(coeffArray.slice([count, 0], [1, -1]).reshape([-1]));
+    
+                    splatData = new Float32Array(output.dataSync());
+                    worker.postMessage({
+                        buffer: splatData.buffer,
+                        vertexCount: Math.floor(splatData.length / rowLength),
+                    });
+                    tf.engine().endScope();
+    
+                    const viewProj = multiply4(projectionMatrix, viewMatrix);
+                    worker.postMessage({ view: viewProj });
+            
+                    if (vertexCount > 0) {
+                        gl.uniformMatrix4fv(u_view, false, viewMatrix);
+                        gl.clear(gl.COLOR_BUFFER_BIT);
+                        gl.drawArraysInstanced(gl.TRIANGLE_FAN, 0, 4, vertexCount);
+                    } else {
+                        gl.clear(gl.COLOR_BUFFER_BIT);
+                    }
+                }
+            }
+        }
+        requestAnimationFrame(renderFrame);
+    }
+
+    async function sendHttpRequest(request_dict) {
+        const response = await fetch(apiUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(request_dict)
+        });
+        return response.json();
+    }
 
     async function processQueue() {
         if (isProcessing || taskQueue.length === 0) {
@@ -517,22 +540,47 @@ async function main() {
         const event = taskQueue.shift(); // 取出队列中的第一个任务
         try {
             lastFrame = Date.now();
-            
-            tf.engine().startScope();
-            let coeff = new Float32Array(await event.data.arrayBuffer());
-            const output = model.predict(tf.tensor(coeff));
+            const result = await sendHttpRequest({"text": event.text, "spkId": event.spkId});
 
-            splatData = new Float32Array(output.dataSync());
-            worker.postMessage({
-                buffer: splatData.buffer,
-                vertexCount: Math.floor(splatData.length / rowLength),
+            // Handle audio data
+            const audioData = atob(result.audio_data);  // Decode base64 to binary string
+            const audioBuffer = new Uint8Array(audioData.length);
+            for (let i = 0; i < audioData.length; ++i) {
+                audioBuffer[i] = audioData.charCodeAt(i);
+            }
+
+            audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            audioContext.decodeAudioData(audioBuffer.buffer, buffer => {
+                requestAnimationFrame(renderFrame);
+                console.log('Audio duration in seconds:', buffer.duration);
+
+                coeffArray = tf.tensor(new Float32Array(result.infer_output.flat()));
+                coeffArray = coeffArray.reshape([-1, 53]);
+                coeffArray = tf.concat([tf.zeros([coeffArray.shape[0], 100]), 
+                                        coeffArray.slice([0, 0], [-1, 50]), 
+                                        tf.zeros([coeffArray.shape[0], 3]), 
+                                        tf.zeros([coeffArray.shape[0], 3]), 
+                                        coeffArray.slice([0, 50], [-1, -1]), 
+                                        tf.zeros([coeffArray.shape[0], 6]), 
+                                        tf.zeros([coeffArray.shape[0], 3])], -1)
+                console.log('Shape of tensor:', coeffArray.shape);
+
+                const source = audioContext.createBufferSource();
+                source.buffer = buffer;
+                source.connect(audioContext.destination);
+                source.start(0);
+
+                source.onended = () => {
+                    audioContext.close().then(() => {
+                        play_end = true;
+                        console.log('AudioContext closed.');
+                        audioContext = null;
+                    });
+                };
+            }, error => {
+                console.error('Error decoding audio data:', error);
             });
-            tf.engine().endScope();
 
-            const now = Date.now();
-
-            const currentFps = 1000 / (now - lastFrame) || 0;
-            fps.innerText = Math.round(currentFps) + " fps";
         } catch (error) {
             console.error("Error processing message:", error);
         } finally {
@@ -542,6 +590,17 @@ async function main() {
             }
         }
     }
+
+    document.getElementById('processButton').addEventListener('click', () => {
+        const textInput = document.getElementById('textInput').value;
+        const spkId = document.getElementById('dropdownMenu').value;
+        if (textInput.trim()) {
+            play_end = false;
+            count = 0;
+            taskQueue.push({ text: textInput, spkId: spkId });
+            processQueue();
+        }
+    });
 }
 
 main().catch((err) => {
