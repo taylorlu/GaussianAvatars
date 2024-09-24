@@ -139,51 +139,51 @@ def render(viewpoint_camera, pc : Union[GaussianModel, FlameGaussianModel], pipe
     else:
         colors_precomp = override_color
 
-    means3D_np = means3D.detach().cpu().numpy()
-    scales_np = scales.detach().cpu().numpy()
-    rotations_np = rotations.detach().cpu().numpy()
-    shs_np = shs.detach().cpu().numpy()
-    opacity_np = opacity.detach().cpu().numpy()
+    # means3D_np = means3D.detach().cpu().numpy()
+    # scales_np = scales.detach().cpu().numpy()
+    # rotations_np = rotations.detach().cpu().numpy()
+    # shs_np = shs.detach().cpu().numpy()
+    # opacity_np = opacity.detach().cpu().numpy()
 
-    buffer = BytesIO()
+    # buffer = BytesIO()
 
-    for idx in range(means3D_np.shape[0]):
-        position = np.array([means3D_np[idx][0], means3D_np[idx][1], means3D_np[idx][2]], dtype=np.float32)
-        scales_ = np.array(
-                [scales_np[idx][0], scales_np[idx][1], scales_np[idx][2]],
-                dtype=np.float32,
-            )
+    # for idx in range(means3D_np.shape[0]):
+    #     position = np.array([means3D_np[idx][0], means3D_np[idx][1], means3D_np[idx][2]], dtype=np.float32)
+    #     scales_ = np.array(
+    #             [scales_np[idx][0], scales_np[idx][1], scales_np[idx][2]],
+    #             dtype=np.float32,
+    #         )
 
-        rot_ = np.array(
-            [rotations_np[idx][0], rotations_np[idx][1], rotations_np[idx][2], rotations_np[idx][3]],
-            dtype=np.float32,
-        )
-        # dir = position - np.array([0.0, 0.0, 1])
-        # dir /= np.linalg.norm(dir)
-        # color = np.concatenate([calculate_color(shs_np[idx], dir), opacity_np[idx]])
+    #     rot_ = np.array(
+    #         [rotations_np[idx][0], rotations_np[idx][1], rotations_np[idx][2], rotations_np[idx][3]],
+    #         dtype=np.float32,
+    #     )
+    #     # dir = position - np.array([0.0, 0.0, 1])
+    #     # dir /= np.linalg.norm(dir)
+    #     # color = np.concatenate([calculate_color(shs_np[idx], dir), opacity_np[idx]])
 
-        SH_C0 = 0.28209479177387814
-        color = np.array(
-            [
-                0.5 + SH_C0 * shs_np[idx][0][0],
-                0.5 + SH_C0 * shs_np[idx][0][1],
-                0.5 + SH_C0 * shs_np[idx][0][2],
-                opacity_np[idx][0],
-            ]
-        )
+    #     SH_C0 = 0.28209479177387814
+    #     color = np.array(
+    #         [
+    #             0.5 + SH_C0 * shs_np[idx][0][0],
+    #             0.5 + SH_C0 * shs_np[idx][0][1],
+    #             0.5 + SH_C0 * shs_np[idx][0][2],
+    #             opacity_np[idx][0],
+    #         ]
+    #     )
 
-        buffer.write(position.tobytes())
-        buffer.write(scales_.tobytes())
-        buffer.write((color * 255).clip(0, 255).astype(np.uint8).tobytes())
-        buffer.write(
-            ((rot_ / np.linalg.norm(rot_)) * 128 + 128)
-            .clip(0, 255)
-            .astype(np.uint8)
-            .tobytes()
-        )
+    #     buffer.write(position.tobytes())
+    #     buffer.write(scales_.tobytes())
+    #     buffer.write((color * 255).clip(0, 255).astype(np.uint8).tobytes())
+    #     buffer.write(
+    #         ((rot_ / np.linalg.norm(rot_)) * 128 + 128)
+    #         .clip(0, 255)
+    #         .astype(np.uint8)
+    #         .tobytes()
+    #     )
 
-    with open(f'D:/splat/splats/{index}.splat', "wb") as f:
-        f.write(buffer.getvalue())
+    # with open(f'D:/splat/splats/{index}.splat', "wb") as f:
+    #     f.write(buffer.getvalue())
 
     # Rasterize visible Gaussians to image, obtain their radii (on screen). 
     rendered_image, radii = rasterizer(

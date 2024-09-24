@@ -47,7 +47,7 @@ class ParamGroup:
 class ModelParams(ParamGroup): 
     def __init__(self, parser, sentinel=False):
         self.sh_degree = 3
-        self._source_path = "306"  # Path to the source data set
+        self._source_path = "506"  # Path to the source data set
         self._target_path = ""  # Path to the target data set for pose and expression transfer
         self._model_path = ""  # Path to the folder to save trained models
         self._images = "images"
@@ -85,16 +85,16 @@ class OptimizationParams(ParamGroup):
         self.opacity_lr = 0.05
         self.scaling_lr = 0.017  # (scaled up according to mean triangle scale)  # 0.005 (original)
         self.rotation_lr = 0.001
-        self.densification_interval = 2_000  # 100 (original)
-        self.opacity_reset_interval = 60_000 # 3000 (original)
-        self.densify_from_iter = 10_000  # 500 (original)
-        self.densify_until_iter = 600_000  # 15_000 (original)
+        self.densification_interval = 1_000  # 100 (original)
+        self.opacity_reset_interval = 2_000 # 3000 (original)
+        self.densify_from_iter = 1_000  # 500 (original)
+        self.densify_until_iter = 10_000  # 15_000 (original)
         self.densify_grad_threshold = 0.0002
         
         # GaussianAvatars
         self.flame_expr_lr = 1e-3
-        self.flame_trans_lr = 1e-6
-        self.flame_pose_lr = 1e-5
+        self.flame_trans_lr = 1e-4
+        self.flame_pose_lr = 1e-4
         self.percent_dense = 0.01
         self.lambda_dssim = 0.2
         self.lambda_xyz = 1e-2

@@ -29,12 +29,14 @@ try:
 except ImportError:
     from utils.pytorch3d_load_obj import load_obj
 
-FLAME_MESH_PATH = "flame_model/assets/flame/head_template_mesh.obj"
-FLAME_LMK_PATH = "flame_model/assets/flame/landmark_embedding_with_eyes.npy"
+# FLAME_MESH_PATH = "flame_model/assets/flame/head_template_mesh.obj"
+FLAME_MESH_PATH = "flame_model/assets/flame/voca_mesh.obj"
+# FLAME_LMK_PATH = "flame_model/assets/flame/landmark_embedding_with_eyes.npy"
+FLAME_LMK_PATH = "flame_model/assets/flame/flame_static_embedding.pkl"
 
 # to be downloaded from https://flame.is.tue.mpg.de/download.php
-# FLAME_MODEL_PATH = "flame_model/assets/flame/generic_model.pkl"  # FLAME 2020
-FLAME_MODEL_PATH = "flame_model/assets/flame/flame2023.pkl"  # FLAME 2023 (versions w/ jaw rotation)
+FLAME_MODEL_PATH = "flame_model/assets/flame/generic_model.pkl"  # FLAME 2020
+# FLAME_MODEL_PATH = "flame_model/assets/flame/flame2023.pkl"  # FLAME 2023 (versions w/ jaw rotation)
 FLAME_PARTS_PATH = "flame_model/assets/flame/FLAME_masks.pkl" # FLAME Vertex Masks
 
 def to_tensor(array, dtype=torch.float32):
@@ -128,20 +130,30 @@ class FlameHead(nn.Module):
             "lbs_weights", to_tensor(to_np(flame_model.weights), dtype=self.dtype)
         )
 
-        # Landmark embeddings for FLAME
-        lmk_embeddings = np.load(
-            flame_lmk_embedding_path, allow_pickle=True, encoding="latin1"
-        )
-        lmk_embeddings = lmk_embeddings[()]
-        self.register_buffer(
-            "full_lmk_faces_idx",
-            torch.tensor(lmk_embeddings["full_lmk_faces_idx"], dtype=torch.int32),
-        )
-        self.register_buffer(
-            "full_lmk_bary_coords",
-            torch.tensor(lmk_embeddings["full_lmk_bary_coords"], dtype=self.dtype),
-        )
+        # # Landmark embeddings for FLAME
+        # lmk_embeddings = np.load(
+        #     flame_lmk_embedding_path, allow_pickle=True, encoding="latin1"
+        # )
+        # lmk_embeddings = lmk_embeddings[()]
+        # self.register_buffer(
+        #     "full_lmk_faces_idx",
+        #     torch.tensor(lmk_embeddings["full_lmk_faces_idx"], dtype=torch.int32),
+        # )
+        # self.register_buffer(
+        #     "full_lmk_bary_coords",
+        #     torch.tensor(lmk_embeddings["full_lmk_bary_coords"], dtype=self.dtype),
+        # )
 
+        with open(flame_lmk_embedding_path, 'rb') as f:
+            static_embeddings = Struct(**pickle.load(f, encoding='latin1'))
+
+        lmk_faces_idx = (static_embeddings.lmk_face_idx).astype(np.int64)
+        self.register_buffer('lmk_faces_idx',
+                             torch.tensor(lmk_faces_idx, dtype=torch.long))
+        lmk_bary_coords = static_embeddings.lmk_b_coords
+        self.register_buffer('lmk_bary_coords',
+                             torch.tensor(lmk_bary_coords, dtype=self.dtype))
+        
         neck_kin_chain = []
         NECK_IDX = 1
         curr_idx = torch.tensor(NECK_IDX, dtype=torch.int32)
@@ -153,22 +165,22 @@ class FlameHead(nn.Module):
         # add faces and uvs
         verts, faces, aux = load_obj(flame_template_mesh_path, load_textures=False)
 
-        vertex_uvs = aux.verts_uvs
-        face_uvs_idx = faces.textures_idx  # index into verts_uvs
+        # vertex_uvs = aux.verts_uvs
+        # face_uvs_idx = faces.textures_idx  # index into verts_uvs
 
-        # create uvcoords per face --> this is what you can use for uv map rendering
-        # range from -1 to 1 (-1, -1) = left top; (+1, +1) = right bottom
-        # pad 1 to the end
-        pad = torch.ones(vertex_uvs.shape[0], 1)
-        vertex_uvs = torch.cat([vertex_uvs, pad], dim=-1)
-        vertex_uvs = vertex_uvs * 2 - 1
-        vertex_uvs[..., 1] = -vertex_uvs[..., 1]
+        # # create uvcoords per face --> this is what you can use for uv map rendering
+        # # range from -1 to 1 (-1, -1) = left top; (+1, +1) = right bottom
+        # # pad 1 to the end
+        # pad = torch.ones(vertex_uvs.shape[0], 1)
+        # vertex_uvs = torch.cat([vertex_uvs, pad], dim=-1)
+        # vertex_uvs = vertex_uvs * 2 - 1
+        # vertex_uvs[..., 1] = -vertex_uvs[..., 1]
 
-        face_uv_coords = face_vertices(vertex_uvs[None], face_uvs_idx[None])[0]
-        self.register_buffer("face_uvcoords", face_uv_coords, persistent=False)
+        # face_uv_coords = face_vertices(vertex_uvs[None], face_uvs_idx[None])[0]
+        # self.register_buffer("face_uvcoords", face_uv_coords, persistent=False)
         self.register_buffer("faces", faces.verts_idx, persistent=False)
 
-        self.register_buffer("verts_uvs", aux.verts_uvs, persistent=False)
+        # self.register_buffer("verts_uvs", aux.verts_uvs, persistent=False)
         self.register_buffer("textures_idx", faces.textures_idx, persistent=False)
         # Check our template mesh faces match those of FLAME:
         assert (self.faces==torch.from_numpy(flame_model.f.astype('int64'))).all()
@@ -268,16 +280,16 @@ class FlameHead(nn.Module):
                 5030, 5031, 5032, 5033, 5034, 5035, 5036, 5037, 5045, 5046, 5047, 5048, 5049, 5050, 5051, 5052, 5060, 5061, 5062, 5063, 5064, 5065, 5066, 5067, 5075, 5076, 5077, 5078, 5079, 5080, 5081, 5082, 5090, 5091, 5092, 5093, 5094, 5095, 5097, 5105, 5106, 5107, 5108, 5109, 5110, 5111, 5112, 5120, 5121, 5122, 5123, 5124, 5125, 5126, 5127, 5135, 5136, 5137, 5138, 5139, 5140, 5141, 5142, 
             ], dtype=torch.int32)], dim=0)
 
-        # construct uv vertices for teeth
-        u = torch.linspace(0.62, 0.38, 15)
-        v = torch.linspace(1-0.0083, 1-0.0425, 7)
-        # v = v[[0, 2, 1, 1]]
-        # v = v[[0, 3, 1, 4, 3, 2, 6, 5]]
-        v = v[[3, 2, 0, 1, 3, 4, 6, 5]]  # TODO: with this order, teeth_lower is not rendered correctly in the uv space
-        uv = torch.stack(torch.meshgrid(u, v, indexing='ij'), dim=-1).permute(1, 0, 2).reshape(num_verts_teeth, 2)  # (#num_teeth, 2)
-        num_verts_uv_orig = self.verts_uvs.shape[0]
-        num_verts_uv_teeth = uv.shape[0]
-        self.verts_uvs = torch.cat([self.verts_uvs, uv], dim=0)
+        # # construct uv vertices for teeth
+        # u = torch.linspace(0.62, 0.38, 15)
+        # v = torch.linspace(1-0.0083, 1-0.0425, 7)
+        # # v = v[[0, 2, 1, 1]]
+        # # v = v[[0, 3, 1, 4, 3, 2, 6, 5]]
+        # v = v[[3, 2, 0, 1, 3, 4, 6, 5]]  # TODO: with this order, teeth_lower is not rendered correctly in the uv space
+        # uv = torch.stack(torch.meshgrid(u, v, indexing='ij'), dim=-1).permute(1, 0, 2).reshape(num_verts_teeth, 2)  # (#num_teeth, 2)
+        # num_verts_uv_orig = self.verts_uvs.shape[0]
+        # num_verts_uv_teeth = uv.shape[0]
+        # self.verts_uvs = torch.cat([self.verts_uvs, uv], dim=0)
 
         # shapedirs copy from lips
         self.shapedirs = torch.cat([self.shapedirs, torch.zeros_like(self.shapedirs[:num_verts_teeth])], dim=0)
@@ -478,9 +490,9 @@ class FlameHead(nn.Module):
             [118, 119, 59],  # 167
         ])
         self.faces = torch.cat([self.faces, f_teeth_upper+num_verts_orig, f_teeth_lower+num_verts_orig], dim=0)
-        self.textures_idx = torch.cat([self.textures_idx, f_teeth_upper+num_verts_uv_orig, f_teeth_lower+num_verts_uv_orig], dim=0)
+        # self.textures_idx = torch.cat([self.textures_idx, f_teeth_upper+num_verts_uv_orig, f_teeth_lower+num_verts_uv_orig], dim=0)
 
-        self.mask.update(self.faces, self.textures_idx)
+        # self.mask.update(self.faces, self.textures_idx)
 
     def forward(
         self,
@@ -543,13 +555,21 @@ class FlameHead(nn.Module):
 
         # compute landmarks if desired
         if return_landmarks:
-            bz = vertices.shape[0]
-            landmarks = vertices2landmarks(
-                vertices,
-                self.faces,
-                self.full_lmk_faces_idx.repeat(bz, 1),
-                self.full_lmk_bary_coords.repeat(bz, 1, 1),
-            )
+            # bz = vertices.shape[0]
+            # landmarks = vertices2landmarks(
+            #     vertices,
+            #     self.faces,
+            #     self.full_lmk_faces_idx.repeat(bz, 1),
+            #     self.full_lmk_bary_coords.repeat(bz, 1, 1),
+            # )
+            lmk_faces_idx = self.lmk_faces_idx.unsqueeze(dim=0).repeat(
+                batch_size, 1)
+            lmk_bary_coords = self.lmk_bary_coords.unsqueeze(dim=0).repeat(
+                batch_size, 1, 1)
+
+            landmarks = vertices2landmarks(vertices, self.faces_tensor,
+                                                lmk_faces_idx,
+                                                lmk_bary_coords)
             ret_vals.append(landmarks)
 
         if len(ret_vals) > 1:
