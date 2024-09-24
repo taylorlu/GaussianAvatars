@@ -60,8 +60,8 @@ class FlameGaussianModel(GaussianModel):
             T = self.num_timesteps
 
             self.flame_param = {
-                'shape': torch.from_numpy(meshes[0]['shape']),
-                'expr': torch.zeros([T, meshes[0]['expr'].shape[1]]),
+                'shape': torch.from_numpy(meshes[0]['shape'])[:self.n_shape],
+                'expr': torch.zeros([T, self.n_expr]),
                 'rotation': torch.zeros([T, 3]),
                 'neck_pose': torch.zeros([T, 3]),
                 'jaw_pose': torch.zeros([T, 3]),
@@ -72,7 +72,7 @@ class FlameGaussianModel(GaussianModel):
             }
 
             for i, mesh in pose_meshes.items():
-                self.flame_param['expr'][i] = torch.from_numpy(mesh['expr'])
+                self.flame_param['expr'][i] = torch.from_numpy(mesh['expr'])[:, :self.n_expr]
                 self.flame_param['rotation'][i] = torch.from_numpy(mesh['rotation'])
                 self.flame_param['neck_pose'][i] = torch.from_numpy(mesh['neck_pose'])
                 self.flame_param['jaw_pose'][i] = torch.from_numpy(mesh['jaw_pose'])
