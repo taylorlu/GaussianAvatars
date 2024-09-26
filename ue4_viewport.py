@@ -70,7 +70,7 @@ def create_sequence(asset_name, camera_transform_array, camera_rotation_array, f
 
     lens_settings = camera_component.get_editor_property("lens_settings")
     lens_settings.set_editor_property("min_focal_length", 4.0)
-    lens_settings.set_editor_property("max_focal_length", 1000)
+    lens_settings.set_editor_property("max_focal_length", 10000)
     lens_settings.set_editor_property("min_f_stop", 1.2)
     lens_settings.set_editor_property("max_f_stop", 500)
     camera_component.set_editor_property("current_aperture", 100)
@@ -127,7 +127,7 @@ def render_sequence_to_movie(current_camera_index, export_path, film_resolution,
 
     capture_settings.settings.output_directory = unreal.DirectoryPath(export_path)
     capture_settings.settings.game_mode_override = None
-    capture_settings.settings.output_format = f"{current_camera_index}" + "_{frame}"
+    capture_settings.settings.output_format = "{:02d}".format(current_camera_index) + "_{frame}"
     capture_settings.settings.overwrite_existing = False
     capture_settings.settings.use_relative_frame_numbers = False
     capture_settings.settings.handle_frames = 0

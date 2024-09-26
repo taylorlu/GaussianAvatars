@@ -19,7 +19,7 @@
             height: 100vh;
             width: 100vw;
             font-family: sans-serif;
-            background: black;
+            background: rgb(17, 34, 56);
             text-shadow: 0 0 3px black;
         }
         a, body {
@@ -77,8 +77,9 @@
         
         #textInput {
             width: 300px;
-            height: 300px;
-            resize: both;
+            height: 100px;
+            min-height: 100px;
+            resize: vertical;
         }
         
         #processButton {
@@ -110,7 +111,7 @@
 		<script>
 			if(location.host.includes('hf.space')) document.body.classList.add('nohf');
 		</script>
-		<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest"> </script>
+		<script src="https://gcore.jsdelivr.net/npm/@tensorflow/tfjs@latest/dist/tf.min.js"> </script>
 
 		<div id="message"></div>
 		<canvas id="canvas"></canvas>
@@ -121,6 +122,7 @@
 				<option value="BV102_streaming">陈强</option>
 				<option value="BV705_streaming">李凯</option>
 				<option value="BV213_streaming">王刚</option>
+                <option value="S_BGN8hxW11">张年</option>
 			</select>
 			<button id="processButton">TTS+数字人</button>
 		</div>

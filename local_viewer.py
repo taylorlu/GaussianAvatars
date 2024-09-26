@@ -40,7 +40,7 @@ class Config(Mini3DViewerConfig):
     """Pipeline settings for gaussian splatting rendering"""
     cam_convention: Literal["opengl", "opencv"] = "opencv"
     """Camera convention"""
-    point_path: Optional[Path] = None
+    point_path: Optional[Path] = Path('output/cd269be3-9/point_cloud/iteration_50000/point_cloud.ply')
     """Path to the gaussian splatting file"""
     motion_path: Optional[Path] = None
     """Path to the motion file (npz)"""
@@ -98,7 +98,7 @@ class LocalViewer(Mini3DViewer):
         # load gaussians
         motion_path = Path(self.cfg.point_path).parent / "flame_param.npz"
         if motion_path.exists():
-            self.gaussians = FlameGaussianModel(self.cfg.sh_degree)
+            self.gaussians = FlameGaussianModel(self.cfg.sh_degree, n_shape=100, n_expr=50)
         else:
             self.gaussians = GaussianModel(self.cfg.sh_degree)
 
@@ -114,10 +114,10 @@ class LocalViewer(Mini3DViewer):
                 raise FileNotFoundError(f'{self.cfg.point_path} does not exist.')
 
     def refresh_stat(self):
-        if self.last_time_fresh is not None:
-            elapsed = time.time() - self.last_time_fresh
-            fps = 1 / elapsed
-            dpg.set_value("_log_fps", f'{int(fps):<4d}')
+        # if self.last_time_fresh is not None:
+        #     elapsed = time.time() - self.last_time_fresh
+        #     fps = 1 / elapsed
+        #     dpg.set_value("_log_fps", f'{int(fps):<4d}')
         self.last_time_fresh = time.time()
     
     def update_record_timeline(self):
@@ -630,6 +630,8 @@ class LocalViewer(Mini3DViewer):
                 if dpg.get_value("_checkbox_show_splatting"):
                     # rgb
                     rgb_splatting = render(cam, self.gaussians, self.cfg.pipeline, torch.tensor(self.cfg.background_color).cuda(), scaling_modifier=dpg.get_value("_slider_scaling_modifier"))["render"].permute(1, 2, 0).contiguous()
+                    # import cv2
+                    # cv2.imwrite('rgb.png', (rgb_splatting*254).to(torch.uint8).cpu().numpy())
 
                     # opacity
                     # override_color = torch.ones_like(self.gaussians._xyz).cuda()

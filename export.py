@@ -17,24 +17,56 @@ class MyGaussianModel(nn.Module):
     def __init__(self) -> None:
         super().__init__()
         self.gaussians = FlameGaussianModel(sh_degree=3)
-        GaussianModel.load_ply(self.gaussians, 'output/point_cloud.ply')
+        path = 'output/cd269be3-9/point_cloud/iteration_50000/'
+        GaussianModel.load_ply(self.gaussians, path+'point_cloud.ply')
         self.flame_model = FlameHead(100, 50)
-        self.register_buffer("static_offset", torch.from_numpy(np.load('output/flame_param.npz')['static_offset']))
+        flame_param = np.load(path+'flame_param.npz')
+        self.register_buffer("static_offset", torch.from_numpy(flame_param['static_offset']))
+        self.register_buffer("translation", torch.from_numpy(flame_param['translation']))
+
+        self.register_buffer("zero_shape", torch.from_numpy(flame_param['shape'])[None, :100])
+        self.register_buffer("zero_expr", torch.from_numpy(flame_param['expr'][-5, :50]))
+        self.register_buffer("zero_rotation", torch.from_numpy(flame_param['rotation'][-5]))
+        self.register_buffer("zero_neck_pose", torch.from_numpy(flame_param['neck_pose'][-5]))
+        self.register_buffer("zero_jaw_pose", torch.from_numpy(flame_param['jaw_pose'][-5]))
+        self.register_buffer("zero_eyes_pose", torch.from_numpy(flame_param['eyes_pose'][-5]))
         self.rot = unitquat_to_rotmat(quat_wxyz_to_xyzw(self.rotation_activation(self.gaussians._rotation)))
 
     def rotation_activation(self, x):
         return x / (torch.sqrt(torch.sum(x ** 2, dim=1, keepdim=True)) + 1e-12)
 
     def forward(self, x):
-        shape = x[None, :100]
+        # shape = x[None, :100]
         expr = x[None, 100:150]
         rotation = x[None, 150:153]
         neck = x[None, 153:156]
         jaw = x[None, 156:159]
         eyes = x[None, 159:165]
-        translation = x[None, 165:168]
-        verts = self.flame_model(shape, expr, rotation, neck, jaw, eyes, translation, return_landmarks=False, static_offset=self.static_offset)
-
+        # print(self.zero_shape)
+        # print(self.zero_rotation)
+        # print(self.zero_jaw_pose)
+        # print(self.translation)
+        verts = self.flame_model(self.zero_shape, 
+                                 self.zero_expr + expr, 
+                                 self.zero_rotation + rotation, 
+                                 self.zero_neck_pose + neck, 
+                                 self.zero_jaw_pose + jaw, 
+                                 self.zero_eyes_pose + eyes, 
+                                 self.translation, 
+                                 zero_centered_at_root_node=False, 
+                                 return_landmarks=False, 
+                                 static_offset=self.static_offset)
+        print(verts)
+        # verts = self.flame_model(self.zero_shape, 
+        #                          expr, 
+        #                          self.zero_rotation + rotation, 
+        #                          neck, 
+        #                          jaw, 
+        #                          eyes, 
+        #                          self.translation, 
+        #                          zero_centered_at_root_node=False, 
+        #                          return_landmarks=False, 
+        #                          static_offset=self.static_offset)
         faces = self.flame_model.faces
         triangles = verts[:, faces]
 
@@ -55,6 +87,7 @@ class MyGaussianModel(nn.Module):
         features_dc = self.gaussians._features_dc
         features_rest = self.gaussians._features_rest
         shs = torch.cat((features_dc, features_rest), dim=1)
+
         color = (torch.cat([0.5 + 0.282 * shs[:, 0, :], opacity], -1) * 255).clip(0, 255)
 
         scaling = self.gaussians.scaling_activation(self.gaussians._scaling)
@@ -98,3 +131,5 @@ keras_model = pytorch_to_keras(
 )
 
 keras_model.save('exp', save_format='tf')
+
+#tensorflowjs_converter --input_format=tf_saved_model exp outtfjs

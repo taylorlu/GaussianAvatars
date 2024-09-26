@@ -60,8 +60,8 @@ class FlameGaussianModel(GaussianModel):
             T = self.num_timesteps
 
             self.flame_param = {
-                'shape': torch.from_numpy(meshes[0]['shape'])[:self.n_shape],
-                'expr': torch.zeros([T, self.n_expr]),
+                'shape': torch.from_numpy(meshes[0]['shape']),
+                'expr': torch.zeros([T, meshes[0]['expr'].shape[1]]),
                 'rotation': torch.zeros([T, 3]),
                 'neck_pose': torch.zeros([T, 3]),
                 'jaw_pose': torch.zeros([T, 3]),
@@ -72,7 +72,7 @@ class FlameGaussianModel(GaussianModel):
             }
 
             for i, mesh in pose_meshes.items():
-                self.flame_param['expr'][i] = torch.from_numpy(mesh['expr'])[:, :self.n_expr]
+                self.flame_param['expr'][i] = torch.from_numpy(mesh['expr'])
                 self.flame_param['rotation'][i] = torch.from_numpy(mesh['rotation'])
                 self.flame_param['neck_pose'][i] = torch.from_numpy(mesh['neck_pose'])
                 self.flame_param['jaw_pose'][i] = torch.from_numpy(mesh['jaw_pose'])
@@ -82,7 +82,7 @@ class FlameGaussianModel(GaussianModel):
             
             for k, v in self.flame_param.items():
                 self.flame_param[k] = v.float().cuda()
-
+            
             self.flame_param_orig = {k: v.clone() for k, v in self.flame_param.items()}
         else:
             # NOTE: not sure when this happens
@@ -102,12 +102,12 @@ class FlameGaussianModel(GaussianModel):
 
         verts, verts_cano = self.flame_model(
             shape[None, ...].cuda(),
-            flame_param['expr'].cuda(),
-            flame_param['rotation'].cuda(),
-            flame_param['neck'].cuda(),
-            flame_param['jaw'].cuda(),
-            flame_param['eyes'].cuda(),
-            flame_param['translation'].cuda(),
+            self.flame_param['expr'][[-5]] + flame_param['expr'].cuda(),
+            self.flame_param['rotation'][[-5]] + flame_param['rotation'].cuda(),
+            self.flame_param['neck_pose'][[-5]] + flame_param['neck'].cuda(),
+            self.flame_param['jaw_pose'][[-5]] + flame_param['jaw'].cuda(),
+            self.flame_param['eyes_pose'][[-5]] + flame_param['eyes'].cuda(),
+            self.flame_param['translation'].cuda(),
             zero_centered_at_root_node=False,
             return_landmarks=False,
             return_verts_cano=True,
@@ -131,7 +131,7 @@ class FlameGaussianModel(GaussianModel):
             return_landmarks=False,
             return_verts_cano=True,
             static_offset=flame_param['static_offset'],
-            # dynamic_offset=flame_param['dynamic_offset'][[timestep]],
+            # dynamic_offset=flame_param['dynamic_offset'],
         )
         self.update_mesh_properties(verts, verts_cano)
     
@@ -178,10 +178,10 @@ class FlameGaussianModel(GaussianModel):
         if self.not_finetune_flame_params:
             return
 
-        # shape
-        self.flame_param['shape'].requires_grad = True
-        param_shape = {'params': [self.flame_param['shape']], 'lr': 1e-5, "name": "shape"}
-        self.optimizer.add_param_group(param_shape)
+        # # shape
+        # self.flame_param['shape'].requires_grad = True
+        # param_shape = {'params': [self.flame_param['shape']], 'lr': 1e-5, "name": "shape"}
+        # self.optimizer.add_param_group(param_shape)
 
         # pose
         self.flame_param['rotation'].requires_grad = True
@@ -207,10 +207,10 @@ class FlameGaussianModel(GaussianModel):
         param_expr = {'params': [self.flame_param['expr']], 'lr': training_args.flame_expr_lr, "name": "expr"}
         self.optimizer.add_param_group(param_expr)
 
-        # static_offset
-        self.flame_param['static_offset'].requires_grad = True
-        param_static_offset = {'params': [self.flame_param['static_offset']], 'lr': 1e-6, "name": "static_offset"}
-        self.optimizer.add_param_group(param_static_offset)
+        # # static_offset
+        # self.flame_param['static_offset'].requires_grad = True
+        # param_static_offset = {'params': [self.flame_param['static_offset']], 'lr': 1e-6, "name": "static_offset"}
+        # self.optimizer.add_param_group(param_static_offset)
 
         # # dynamic_offset
         # self.flame_param['dynamic_offset'].requires_grad = True

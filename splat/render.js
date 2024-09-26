@@ -1,12 +1,12 @@
 
 let camera = {
-    width: 960,
-    height: 540,
-    position: [0, 0, 0.7],
+    width: 800,
+    height: 800,
+    position: [0, 0.9, -0.05],
     rotation: [
-        [1, 0, 0],
-        [0, -1, 0],
-        [0, 0, -1],
+        [1, 0, 0], 
+        [0, 0, -1], 
+        [0, -1, 0]
     ],
     fy: 1164,
     fx: 1159,
@@ -457,11 +457,12 @@ async function main() {
         }
     };
 
-    const model = await tf.loadGraphModel('http://127.0.0.1:8000/outtfjs/model.json');
+    const model = await tf.loadGraphModel('http://10.10.22.246:8000/outtfjs2/model.json');
     model.predict(tf.zeros([168]));
 
     const rowLength = 3 + 4 + 6;
     const apiUrl = "http://172.17.12.143:8001/predict";
+    // const apiUrl = "http://10.10.22.246:5000/forward";
 
     let taskQueue = [];    // 用于存储待处理的消息事件
     let isProcessing = false; // 标识是否正在处理任务
@@ -478,17 +479,17 @@ async function main() {
     const frame_in_sec = 1.0/25;
     let count = 0;
     let coeffArray = null;
+    let startAudioTime = null;
 
     // Animation frame rendering function
     function renderFrame(timestamp) {
         if(!play_end ) {
-            const audioElapsed = audioContext ? audioContext.currentTime : 0;
+            const audioElapsed = audioContext ? (performance.now() - startAudioTime) / 1000 : 0;
             const expectedFrame = Math.floor(audioElapsed / frame_in_sec);
-            // console.error(count, expectedFrame);
 
             if (expectedFrame > count) {
                 count = expectedFrame;
-                // console.log(`Rendering frame ${count} at audio time ${audioElapsed.toFixed(2)}s`);
+                console.log(`Rendering frame ${count} at audio time ${audioElapsed.toFixed(2)}s`);
 
                 if(count<coeffArray.shape[0]) {
                     tf.engine().startScope();
@@ -502,7 +503,8 @@ async function main() {
                         vertexCount: Math.floor(splatData.length / rowLength),
                     });
                     tf.engine().endScope();
-    
+                    // console.log(Math.floor(splatData.length / rowLength));
+
                     const viewProj = multiply4(projectionMatrix, viewMatrix);
                     worker.postMessage({ view: viewProj });
             
@@ -551,7 +553,6 @@ async function main() {
 
             audioContext = new (window.AudioContext || window.webkitAudioContext)();
             audioContext.decodeAudioData(audioBuffer.buffer, buffer => {
-                requestAnimationFrame(renderFrame);
                 console.log('Audio duration in seconds:', buffer.duration);
 
                 coeffArray = tf.tensor(new Float32Array(result.infer_output.flat()));
@@ -563,12 +564,16 @@ async function main() {
                                         coeffArray.slice([0, 50], [-1, -1]), 
                                         tf.zeros([coeffArray.shape[0], 6]), 
                                         tf.zeros([coeffArray.shape[0], 3])], -1)
-                console.log('Shape of tensor:', coeffArray.shape);
+                // console.log('Shape of tensor:', coeffArray.shape);
 
                 const source = audioContext.createBufferSource();
                 source.buffer = buffer;
                 source.connect(audioContext.destination);
                 source.start(0);
+
+                startAudioTime = performance.now();
+                count = 0;
+                play_end = false;
 
                 source.onended = () => {
                     audioContext.close().then(() => {
@@ -577,6 +582,7 @@ async function main() {
                         audioContext = null;
                     });
                 };
+                requestAnimationFrame(renderFrame);
             }, error => {
                 console.error('Error decoding audio data:', error);
             });

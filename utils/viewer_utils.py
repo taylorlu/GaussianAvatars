@@ -88,7 +88,8 @@ class OrbitCamera:
         """ The internal state of the camera is based on the OpenGL convention, but 
             properties are converted to the target convention when queried.
         """
-        self.rot = R.from_matrix([[1, 0, 0], [0, 1, 0], [0, 0, 1]])  # OpenGL convention
+        # self.rot = R.from_matrix([[1, 0, 0], [0, 1, 0], [0, 0, 1]])  # OpenGL convention
+        self.rot = R.from_matrix([[-1, 0, 0], [0, 0, 1], [0, 1, 0]])  # OpenGL convention
         self.look_at = np.array([0, 0, 0], dtype=np.float32)  # look at this point
         self.radius = self.radius_default  # camera distance from center
         self.fovy = self.fovy_default
