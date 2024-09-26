@@ -178,10 +178,10 @@ class FlameGaussianModel(GaussianModel):
         if self.not_finetune_flame_params:
             return
 
-        # # shape
-        # self.flame_param['shape'].requires_grad = True
-        # param_shape = {'params': [self.flame_param['shape']], 'lr': 1e-5, "name": "shape"}
-        # self.optimizer.add_param_group(param_shape)
+        # shape
+        self.flame_param['shape'].requires_grad = True
+        param_shape = {'params': [self.flame_param['shape']], 'lr': 1e-5, "name": "shape"}
+        self.optimizer.add_param_group(param_shape)
 
         # pose
         self.flame_param['rotation'].requires_grad = True
@@ -207,10 +207,10 @@ class FlameGaussianModel(GaussianModel):
         param_expr = {'params': [self.flame_param['expr']], 'lr': training_args.flame_expr_lr, "name": "expr"}
         self.optimizer.add_param_group(param_expr)
 
-        # # static_offset
-        # self.flame_param['static_offset'].requires_grad = True
-        # param_static_offset = {'params': [self.flame_param['static_offset']], 'lr': 1e-6, "name": "static_offset"}
-        # self.optimizer.add_param_group(param_static_offset)
+        # static_offset
+        self.flame_param['static_offset'].requires_grad = True
+        param_static_offset = {'params': [self.flame_param['static_offset']], 'lr': 1e-6, "name": "static_offset"}
+        self.optimizer.add_param_group(param_static_offset)
 
         # # dynamic_offset
         # self.flame_param['dynamic_offset'].requires_grad = True
