@@ -519,7 +519,7 @@ class FlameHead(nn.Module):
         """
         batch_size = shape.shape[0]
 
-        betas = torch.cat([shape, expr], dim=1)
+        betas = torch.cat([shape[:, :self.n_shape_params], expr[:, :self.n_expr_params]], dim=1)
         full_pose = torch.cat([rotation, neck, jaw, eyes], dim=1)
         template_vertices = self.v_template.unsqueeze(0).expand(batch_size, -1, -1)
         
