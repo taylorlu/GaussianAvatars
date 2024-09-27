@@ -101,8 +101,8 @@ class FlameGaussianModel(GaussianModel):
             static_offset = self.flame_param['static_offset']
 
         verts, verts_cano = self.flame_model(
-            shape[None, ...].cuda(),
-            self.flame_param['expr'][[-5]] + flame_param['expr'].cuda(),
+            shape[None, :self.n_shape].cuda(),
+            self.flame_param['expr'][[-5]][:, :self.n_expr] + flame_param['expr'].cuda(),
             self.flame_param['rotation'][[-5]] + flame_param['rotation'].cuda(),
             self.flame_param['neck_pose'][[-5]] + flame_param['neck'].cuda(),
             self.flame_param['jaw_pose'][[-5]] + flame_param['jaw'].cuda(),
