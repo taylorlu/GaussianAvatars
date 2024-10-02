@@ -1,15 +1,11 @@
 
 let camera = {
-    width: 800,
-    height: 800,
-    position: [0, 0.9, -0.05],
-    rotation: [
-        [1, 0, 0], 
-        [0, 0, -1], 
-        [0, -1, 0]
-    ],
-    fy: 1164,
-    fx: 1159,
+    width: 1024,
+    height: 1024,
+    position: [0, 0, 0.8],
+    rotation: [[ 1, 0, 0], [0, -1, 0], [ 0, 0, -1]],
+    fy: 1024,
+    fx: 1024,
 };
 
 function getProjectionMatrix(fx, fy, width, height) {
@@ -158,19 +154,9 @@ function createWorker(self) {
         
         if (!buffer) return;
         const f_buffer = new Float32Array(buffer);
-        if (lastVertexCount == vertexCount) {
-            let dot =
-                lastProj[2] * viewProj[2] +
-                lastProj[6] * viewProj[6] +
-                lastProj[10] * viewProj[10];
-            if (Math.abs(dot - 1) < 0.01) {
-                // return;
-            }
-        } else {
-            lastVertexCount = vertexCount;
-        }
-        // console.time("sort");
+
         generateTexture();
+        // console.time("sort");
 
         let maxDepth = -Infinity;
         let minDepth = Infinity;
@@ -180,22 +166,23 @@ function createWorker(self) {
                 ((viewProj[2] * f_buffer[13 * i + 0] +
                     viewProj[6] * f_buffer[13 * i + 1] +
                     viewProj[10] * f_buffer[13 * i + 2]) *
-                    4096) |
+                    1_000_000) |
                 0;
             sizeList[i] = depth;
             if (depth > maxDepth) maxDepth = depth;
             if (depth < minDepth) minDepth = depth;
         }
+        const totalRange = 512 * 512
 
-        // This is a 16 bit single-pass counting sort
-        let depthInv = (256 * 256) / (maxDepth - minDepth);
-        let counts0 = new Uint32Array(256 * 256);
+        // This is a single-pass counting sort
+        let depthInv = totalRange / (maxDepth - minDepth);
+        let counts0 = new Uint32Array(totalRange);
         for (let i = 0; i < vertexCount; i++) {
             sizeList[i] = ((sizeList[i] - minDepth) * depthInv) | 0;
             counts0[sizeList[i]]++;
         }
-        let starts0 = new Uint32Array(256 * 256);
-        for (let i = 1; i < 256 * 256; i++)
+        let starts0 = new Uint32Array(totalRange);
+        for (let i = 1; i < totalRange; i++)
             starts0[i] = starts0[i - 1] + counts0[i - 1];
         depthIndex = new Uint32Array(vertexCount);
         for (let i = 0; i < vertexCount; i++)
@@ -319,9 +306,6 @@ void main () {
 
 let viewMatrix = getViewMatrix(camera);
 async function main() {
-    try {
-        viewMatrix = JSON.parse(decodeURIComponent(location.hash.slice(1)));
-    } catch (err) {}
 
     const worker = new Worker(
         URL.createObjectURL(
@@ -457,8 +441,8 @@ async function main() {
         }
     };
 
-    const model = await tf.loadGraphModel('http://10.10.22.246:8000/outtfjs2/model.json');
-    model.predict(tf.zeros([168]));
+    const model = await tf.loadGraphModel('http://192.168.1.4:8000/outtfjs4/model.json');
+    model.predict(tf.zeros([418]));
 
     const rowLength = 3 + 4 + 6;
     const apiUrl = "http://172.17.12.143:8001/predict";
@@ -489,7 +473,7 @@ async function main() {
 
             if (expectedFrame > count) {
                 count = expectedFrame;
-                console.log(`Rendering frame ${count} at audio time ${audioElapsed.toFixed(2)}s`);
+                // console.log(`Rendering frame ${count} at audio time ${audioElapsed.toFixed(2)}s`);
 
                 if(count<coeffArray.shape[0]) {
                     tf.engine().startScope();
@@ -556,12 +540,12 @@ async function main() {
                 console.log('Audio duration in seconds:', buffer.duration);
 
                 coeffArray = tf.tensor(new Float32Array(result.infer_output.flat()));
-                coeffArray = coeffArray.reshape([-1, 53]);
-                coeffArray = tf.concat([tf.zeros([coeffArray.shape[0], 100]), 
-                                        coeffArray.slice([0, 0], [-1, 50]), 
+                coeffArray = coeffArray.reshape([-1, 103]);
+                coeffArray = tf.concat([tf.zeros([coeffArray.shape[0], 300]), 
+                                        coeffArray.slice([0, 0], [-1, 100]), 
                                         tf.zeros([coeffArray.shape[0], 3]), 
                                         tf.zeros([coeffArray.shape[0], 3]), 
-                                        coeffArray.slice([0, 50], [-1, -1]), 
+                                        coeffArray.slice([0, 100], [-1, -1]), 
                                         tf.zeros([coeffArray.shape[0], 6]), 
                                         tf.zeros([coeffArray.shape[0], 3])], -1)
                 // console.log('Shape of tensor:', coeffArray.shape);
